@@ -1,3 +1,6 @@
 [submodule "hello-lcd"]
 	path = hello-lcd
 	url = https://github.com/brucemack/hello-lcd.git
+[submodule "hello-ps2keyboard"]
+	path = hello-ps2keyboard
+	url = https://github.com/brucemack/hello-ps2keyboard.git

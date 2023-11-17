@@ -13,6 +13,7 @@ add_executable(main
   hello-lcd/tests/TestClockInterface.cpp
   hello-lcd/pico/PICOI2CInterface.cpp 
   hello-lcd/pico/PICOClockInterface.cpp
+  hello-ps2keyboard/PS2Keyboard.cpp
 )
 pico_enable_stdio_usb(main 1)
 pico_enable_stdio_uart(main 1)

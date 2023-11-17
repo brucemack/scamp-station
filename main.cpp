@@ -13,11 +13,22 @@
 #ifdef PICO_BUILD
 #include "hello-lcd/pico/PICOI2CInterface.h"
 #include "hello-lcd/pico/PICOClockInterface.h"
+#include "hello-ps2keyboard/PS2Keyboard.h"
 #endif
+
+#define LED_PIN (25)
 
 #define I2C0_SDA 4 // Pin 6: I2C channel 0 - data
 #define I2C0_SCL 5 // Pin 7: I2C channel 0 - clock
-#define LED_PIN (25)
+
+#define KBD_DATA_PIN (2)
+#define KBD_CLOCK_PIN (3)
+
+class Listener : public KeyboardListener {
+public:
+
+    void onKey() { };
+};
 
 using namespace std;
 
@@ -35,6 +46,13 @@ int main(int argc, const char** argv) {
     gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
     gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
+
+    // Keyboard setup
+    gpio_init(KBD_DATA_PIN);
+    gpio_set_dir(KBD_DATA_PIN, GPIO_IN);   
+    gpio_init(KBD_CLOCK_PIN);
+    gpio_set_dir(KBD_CLOCK_PIN, GPIO_IN);
+
     
     gpio_put(LED_PIN, 1);
     sleep_ms(1000);
@@ -78,6 +96,12 @@ int main(int argc, const char** argv) {
 
     cout << "I2C cycles: " << i2c.getCycleCount() << endl;
     cout << "Busy Count: " << display.getBusyCount() << endl;
+
+    Listener listener;
+
+    keyboard_init(KBD_CLOCK_PIN, KBD_DATA_PIN, &listener);
+    gpio_set_irq_enabled_with_callback(KBD_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, 
+        true, keyboard_clock_callback);
 
     // Prevent exit
     while (1) { }
