@@ -14,11 +14,21 @@ add_executable(main
   hello-lcd/pico/PICOI2CInterface.cpp 
   hello-lcd/pico/PICOClockInterface.cpp
   hello-ps2keyboard/PS2Keyboard.cpp
+  hello-scamp/fixed_math.cpp
+  hello-scamp/fixed_fft.cpp
+  hello-scamp/Symbol6.cpp 
+  hello-scamp/CodeWord12.cpp  
+  hello-scamp/CodeWord24.cpp 
+	hello-scamp/Frame30.cpp 
+  hello-scamp/Util.cpp 
+	hello-scamp/ClockRecoveryPLL.cpp 
+  hello-scamp/Demodulator.cpp 
+  hello-scamp/TestDemodulatorListener.cpp
 )
 pico_enable_stdio_usb(main 1)
 pico_enable_stdio_uart(main 1)
 target_compile_definitions(main PUBLIC PICO_BUILD=1)
-target_link_libraries(main pico_stdlib hardware_i2c)
+target_link_libraries(main pico_stdlib hardware_i2c hardware_adc)
 
 
 

@@ -4,6 +4,8 @@
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
+#include "hardware/adc.h"
+#include "hardware/sync.h"
 #endif
 
 #include "hello-lcd/HD44780_PCF8574.h"
@@ -32,12 +34,34 @@ using namespace std;
 using namespace scamp;
 
 static bool unlockFlag = false; 
+static uint32_t adcSampleCount = 0;
+static const uint32_t adcClockHz = 48000000;
 
 class Listener : public KeyboardListener {
 public:
 
     void onKey() { unlockFlag = true; };
 };
+
+// Decorates a function name, such that the function will execute from RAM 
+// (assuming it is not inlined into a flash function by the compiler)
+static void __not_in_flash_func(adc_irq_handler) () {
+    
+    const uint32_t irq = save_and_disable_interrupts();
+
+    while (!adc_fifo_is_empty()) {
+        // Center around zero
+        const int16_t lastSample = adc_fifo_get() - 2048;
+        // TODO: REMOVE FLOAT
+        const float lastSampleF32 = lastSample / 2048.0;
+        adcSampleCount++;
+        if (adcSampleCount % 2000 == 0) {
+            printf("TICK %ld sample: %d\n", adcSampleCount, lastSample);
+        }
+    }
+
+    restore_interrupts(irq);
+}
 
 int main(int argc, const char** argv) {
 
@@ -79,6 +103,10 @@ int main(int argc, const char** argv) {
     uint8_t addr = 0x27;
     // 4-bit interface, 2 rows, 5x8 characters
     HD44780_PCF8574 display(2, false, addr, &i2c, &clk);
+    // Keyboard
+    Listener listener;
+    // ADC setup
+    const uint16_t sampleFreq = 2000;
 
     printf("SCAMP Station\n");
     
@@ -104,18 +132,36 @@ int main(int argc, const char** argv) {
     cout << "I2C cycles: " << i2c.getCycleCount() << endl;
     cout << "Busy Count: " << display.getBusyCount() << endl;
 
-    Listener listener;
+   
+#ifdef PICO_BUILD
 
-#ifdef SCAMP_BUILD
     keyboard_init(KBD_CLOCK_PIN, KBD_DATA_PIN, &listener);
     gpio_set_irq_enabled_with_callback(KBD_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, 
         true, keyboard_clock_callback);
+
+    // Get the ADC iniialized
+    uint8_t adcChannel = 0;
+    adc_gpio_init(26 + adcChannel);
+    adc_init();
+    adc_select_input(adcChannel);
+    adc_fifo_setup(
+        true,   
+        false,
+        1,
+        false,
+        false
+    );
+    adc_set_clkdiv(adcClockHz / (uint32_t)sampleFreq);
+    irq_set_exclusive_handler(ADC_IRQ_FIFO, adc_irq_handler);    
+    adc_irq_set_enabled(true);
+    irq_set_enabled(ADC_IRQ_FIFO, true);
+    adc_run(true);
+
 #endif
 
     // Create the demodulator
     TestDemodulatorListener testListener;
 
-    const unsigned int sampleFreq = 2000;
     const uint16_t lowFreq = 50;
     const unsigned int samplesPerSymbol = 60;
     const unsigned int markFreq = 667;
