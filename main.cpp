@@ -16,6 +16,10 @@
 #include "hello-ps2keyboard/PS2Keyboard.h"
 #endif
 
+#include "hello-ps2keyboard/KeyboardListener.h"
+#include "hello-scamp/Demodulator.h"
+#include "hello-scamp/TestDemodulatorListener.h"
+
 #define LED_PIN (25)
 
 #define I2C0_SDA 4 // Pin 6: I2C channel 0 - data
@@ -24,13 +28,16 @@
 #define KBD_DATA_PIN (2)
 #define KBD_CLOCK_PIN (3)
 
+using namespace std;
+using namespace scamp;
+
+static bool unlockFlag = false; 
+
 class Listener : public KeyboardListener {
 public:
 
-    void onKey() { };
+    void onKey() { unlockFlag = true; };
 };
-
-using namespace std;
 
 int main(int argc, const char** argv) {
 
@@ -99,9 +106,36 @@ int main(int argc, const char** argv) {
 
     Listener listener;
 
+#ifdef SCAMP_BUILD
     keyboard_init(KBD_CLOCK_PIN, KBD_DATA_PIN, &listener);
     gpio_set_irq_enabled_with_callback(KBD_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, 
         true, keyboard_clock_callback);
+#endif
+
+    // Create the demodulator
+    TestDemodulatorListener testListener;
+
+    const unsigned int sampleFreq = 2000;
+    const uint16_t lowFreq = 50;
+    const unsigned int samplesPerSymbol = 60;
+    const unsigned int markFreq = 667;
+    const unsigned int spaceFreq = 600;
+
+    // Here we can inject a tuning error to show that the demodulator will
+    // still find the signal.
+    const unsigned int tuningErrorHz = 0;
+
+    // The size of the FFT used for frequency acquisition
+    const uint16_t log2fftN = 9;
+    const uint16_t fftN = 1 << log2fftN;
+    // Space for the demodulator to work in (no dynamic memory allocation!)
+    q15 trigTable[fftN];
+    q15 window[fftN];
+    q15 buffer[fftN];
+    cq15 fftResult[fftN];
+
+    Demodulator demod(&testListener, sampleFreq, lowFreq, log2fftN,
+        trigTable, window, fftResult, buffer);
 
     // Prevent exit
     while (1) { }

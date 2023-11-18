@@ -4,3 +4,6 @@
 [submodule "hello-ps2keyboard"]
 	path = hello-ps2keyboard
 	url = https://github.com/brucemack/hello-ps2keyboard.git
+[submodule "hello-scamp"]
+	path = hello-scamp
+	url = https://github.com/brucemack/hello-scamp.git
