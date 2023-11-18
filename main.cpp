@@ -6,6 +6,7 @@
 #include "hardware/i2c.h"
 #include "hardware/adc.h"
 #include "hardware/sync.h"
+#include "pico/util/queue.h"
 #endif
 
 #include "hello-lcd/HD44780_PCF8574.h"
@@ -33,9 +34,30 @@
 using namespace std;
 using namespace scamp;
 
-static bool unlockFlag = false; 
-static uint32_t adcSampleCount = 0;
+static const uint16_t sampleFreq = 2000;
 static const uint32_t adcClockHz = 48000000;
+static const uint16_t lowFreq = 50;
+static const unsigned int samplesPerSymbol = 60;
+// The size of the FFT used for frequency acquisition
+static const uint16_t log2fftN = 9;
+static const uint16_t fftN = 1 << log2fftN;
+// Space for the demodulator to work in (no dynamic memory allocation!)
+static q15 trigTable[fftN];
+static q15 window[fftN];
+static q15 buffer[fftN];
+static cq15 fftResult[fftN];
+// The demodulator 
+static Demodulator demod(sampleFreq, lowFreq, log2fftN,
+    trigTable, window, fftResult, buffer);
+
+// This is the queue used to pass ADC samples from the ISR and into the main 
+// event loop.
+static queue_t adcSampleQueue;
+// This is the queue ussed to pass keyboard activity from the ISR into the main
+// event loop
+static queue_t kbdEventQueue;
+
+static bool unlockFlag = false; 
 
 class Listener : public KeyboardListener {
 public:
@@ -43,24 +65,16 @@ public:
     void onKey() { unlockFlag = true; };
 };
 
+static uint32_t sampleCount = 0;
+
 // Decorates a function name, such that the function will execute from RAM 
 // (assuming it is not inlined into a flash function by the compiler)
-static void __not_in_flash_func(adc_irq_handler) () {
-    
-    const uint32_t irq = save_and_disable_interrupts();
-
+static void __not_in_flash_func(adc_irq_handler) () {    
     while (!adc_fifo_is_empty()) {
-        // Center around zero
-        const int16_t lastSample = adc_fifo_get() - 2048;
-        // TODO: REMOVE FLOAT
-        const float lastSampleF32 = lastSample / 2048.0;
-        adcSampleCount++;
-        if (adcSampleCount % 2000 == 0) {
-            printf("TICK %ld sample: %d\n", adcSampleCount, lastSample);
-        }
+        const int16_t lastSample = adc_fifo_get();
+        queue_add_blocking(&adcSampleQueue, &lastSample);
+        sampleCount++;
     }
-
-    restore_interrupts(irq);
 }
 
 int main(int argc, const char** argv) {
@@ -106,7 +120,6 @@ int main(int argc, const char** argv) {
     // Keyboard
     Listener listener;
     // ADC setup
-    const uint16_t sampleFreq = 2000;
 
     printf("SCAMP Station\n");
     
@@ -139,6 +152,10 @@ int main(int argc, const char** argv) {
     gpio_set_irq_enabled_with_callback(KBD_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, 
         true, keyboard_clock_callback);
 
+    // This is the queue used to collect data from the ADC.  Each queue entry
+    // is 16 bits (uint16).
+    queue_init(&adcSampleQueue, 2, 32);
+
     // Get the ADC iniialized
     uint8_t adcChannel = 0;
     adc_gpio_init(26 + adcChannel);
@@ -159,32 +176,48 @@ int main(int argc, const char** argv) {
 
 #endif
 
-    // Create the demodulator
+    // Create the demodulator listner
     TestDemodulatorListener testListener;
+    demod.setListener(&testListener);
 
-    const uint16_t lowFreq = 50;
-    const unsigned int samplesPerSymbol = 60;
     const unsigned int markFreq = 667;
     const unsigned int spaceFreq = 600;
 
     // Here we can inject a tuning error to show that the demodulator will
     // still find the signal.
-    const unsigned int tuningErrorHz = 0;
+    const unsigned int tuningErrorHz = 0;    
 
-    // The size of the FFT used for frequency acquisition
-    const uint16_t log2fftN = 9;
-    const uint16_t fftN = 1 << log2fftN;
-    // Space for the demodulator to work in (no dynamic memory allocation!)
-    q15 trigTable[fftN];
-    q15 window[fftN];
-    q15 buffer[fftN];
-    cq15 fftResult[fftN];
 
-    Demodulator demod(&testListener, sampleFreq, lowFreq, log2fftN,
-        trigTable, window, fftResult, buffer);
 
     // Prevent exit
-    while (1) { }
+    while (1) { 
+
+        sleep_ms(1);
+
+        // Check for ADC activity
+        if (!queue_is_empty(&adcSampleQueue)) {
+            // Pull off ADC queue
+            uint16_t lastSample = 0;
+            queue_remove_blocking(&adcSampleQueue, &lastSample);
+            // Center around zero
+            lastSample -= 2048;
+            // TODO: REMOVE FLOAT
+            const float lastSampleF32 = lastSample / 2048.0;
+            const q15 lastSampleQ15 = f32_to_q15(lastSampleF32);
+            //demod.processSample(lastSampleQ15);
+        }
+
+        if (unlockFlag) {
+            cout << "Unlocking" << endl;
+            demod.setFrequencyLock(false);
+            unlockFlag = false;
+        }            
+
+        if (sampleCount % 2000 == 0) {
+            cout << "Sample " << sampleCount << endl;
+        }
+
+    }
 
     return 0;
 }
