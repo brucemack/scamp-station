@@ -34,6 +34,7 @@ public:
     virtual void dataSyncAcquired();
     virtual void badFrameReceived(uint32_t rawFrame);
     virtual void received(char asciiChar);
+    virtual void receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr);
 
 private:
 
