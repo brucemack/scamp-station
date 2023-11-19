@@ -8,7 +8,9 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 add_executable(main
-  main.cpp hello-lcd/HD44780.cpp hello-lcd/HD44780_PCF8574.cpp 
+  main.cpp 
+  StationDemodulatorListener.cpp
+  hello-lcd/HD44780.cpp hello-lcd/HD44780_PCF8574.cpp 
   hello-lcd/tests/TestI2CInterface.cpp 
   hello-lcd/tests/TestClockInterface.cpp
   hello-lcd/pico/PICOI2CInterface.cpp 

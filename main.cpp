@@ -19,6 +19,7 @@
 #include "hello-ps2keyboard/PS2Keyboard.h"
 #endif
 
+#include "StationDemodulatorListener.h"
 #include "hello-ps2keyboard/KeyboardListener.h"
 #include "hello-scamp/Demodulator.h"
 #include "hello-scamp/TestDemodulatorListener.h"
@@ -59,6 +60,9 @@ static queue_t kbdEventQueue;
 
 static bool unlockFlag = false; 
 
+// Diagnostic area
+static TestDemodulatorListener::Sample samples[2000];
+
 class Listener : public KeyboardListener {
 public:
 
@@ -66,16 +70,29 @@ public:
 };
 
 static uint32_t sampleCount = 0;
+static uint16_t maxAdcSampleQueue = 0;
 
 // Decorates a function name, such that the function will execute from RAM 
 // (assuming it is not inlined into a flash function by the compiler)
 static void __not_in_flash_func(adc_irq_handler) () {    
     while (!adc_fifo_is_empty()) {
         const int16_t lastSample = adc_fifo_get();
-        queue_add_blocking(&adcSampleQueue, &lastSample);
+        bool added = queue_try_add(&adcSampleQueue, &lastSample);
+        if (!added) {
+            return;
+        }
         sampleCount++;
+        maxAdcSampleQueue = std::max(maxAdcSampleQueue,
+            (uint16_t)queue_get_level(&adcSampleQueue));
     }
 }
+
+uint32_t get_us() {
+    absolute_time_t at = get_absolute_time();
+    return to_us_since_boot(at);
+}
+
+static uint32_t maxUs = 0;
 
 int main(int argc, const char** argv) {
 
@@ -154,7 +171,7 @@ int main(int argc, const char** argv) {
 
     // This is the queue used to collect data from the ADC.  Each queue entry
     // is 16 bits (uint16).
-    queue_init(&adcSampleQueue, 2, 32);
+    queue_init(&adcSampleQueue, 2, 64);
 
     // Get the ADC iniialized
     uint8_t adcChannel = 0;
@@ -177,8 +194,10 @@ int main(int argc, const char** argv) {
 #endif
 
     // Create the demodulator listner
-    TestDemodulatorListener testListener;
-    demod.setListener(&testListener);
+    //TestDemodulatorListener testListener(cout, samples, 2000);
+    //testListener.setTriggerMode(TestDemodulatorListener::TriggerMode::ON_LOCK);
+    StationDemodulatorListener demodListener(&display);
+    demod.setListener(&demodListener);
 
     const unsigned int markFreq = 667;
     const unsigned int spaceFreq = 600;
@@ -187,36 +206,36 @@ int main(int argc, const char** argv) {
     // still find the signal.
     const unsigned int tuningErrorHz = 0;    
 
-
-
     // Prevent exit
     while (1) { 
 
-        sleep_ms(1);
-
         // Check for ADC activity
-        if (!queue_is_empty(&adcSampleQueue)) {
+        while (!queue_is_empty(&adcSampleQueue)) {
             // Pull off ADC queue
             uint16_t lastSample = 0;
             queue_remove_blocking(&adcSampleQueue, &lastSample);
             // Center around zero
-            lastSample -= 2048;
+            lastSample -= (2048 + 60);
             // TODO: REMOVE FLOAT
             const float lastSampleF32 = lastSample / 2048.0;
             const q15 lastSampleQ15 = f32_to_q15(lastSampleF32);
-            //demod.processSample(lastSampleQ15);
+            uint32_t start = get_us();
+            demod.processSample(lastSampleQ15);
+            uint32_t end = get_us();
+            maxUs = std::max(maxUs, (end - start));
         }
 
         if (unlockFlag) {
-            cout << "Unlocking" << endl;
-            demod.setFrequencyLock(false);
+
+            cout << queue_get_level(&adcSampleQueue) << " " << maxUs    
+                << " " << maxAdcSampleQueue
+                << endl;
+
+            demod.reset();
+            //listener.dumpSamples(cout);
+          
             unlockFlag = false;
         }            
-
-        if (sampleCount % 2000 == 0) {
-            cout << "Sample " << sampleCount << endl;
-        }
-
     }
 
     return 0;
