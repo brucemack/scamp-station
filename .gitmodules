@@ -7,3 +7,6 @@
 [submodule "hello-scamp"]
 	path = hello-scamp
 	url = https://github.com/brucemack/hello-scamp.git
+[submodule "hello-pico-si5351"]
+	path = hello-pico-si5351
+	url = https://github.com/brucemack/hello-pico-si5351.git

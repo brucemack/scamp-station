@@ -21,15 +21,23 @@
 
 #include "hello-ps2keyboard/KeyboardListener.h"
 #include "hello-scamp/Demodulator.h"
+#include "hello-scamp/Util.h"
+#include "hello-scamp/Frame30.h"
 #include "hello-scamp/TestDemodulatorListener.h"
+#include "hello-pico-si5351/si5351.h"
 
 #include "StationDemodulatorListener.h"
 #include "Si5351Modulator.h"
 
 #define LED_PIN (25)
 
-#define I2C0_SDA 4 // Pin 6: I2C channel 0 - data
-#define I2C0_SCL 5 // Pin 7: I2C channel 0 - clock
+#define I2C0_SDA 4      // Pin 6: I2C channel 0 - data
+#define I2C0_SCL 5      // Pin 7: I2C channel 0 - clock
+
+#define I2C1_SDA_PIN 6  // Pin 9  - data
+#define I2C1_SCL_PIN 7  // Pin 10 - clock
+
+
 
 #define KBD_DATA_PIN (2)
 #define KBD_CLOCK_PIN (3)
@@ -41,6 +49,9 @@ static const uint16_t sampleFreq = 2000;
 static const uint32_t adcClockHz = 48000000;
 static const uint16_t lowFreq = 50;
 static const unsigned int samplesPerSymbol = 60;
+static const unsigned int markFreq = 667;
+static const unsigned int spaceFreq = 600;
+
 // The size of the FFT used for frequency acquisition
 static const uint16_t log2fftN = 9;
 static const uint16_t fftN = 1 << log2fftN;
@@ -118,11 +129,17 @@ int main(int argc, const char** argv) {
     gpio_set_dir(LED_PIN, GPIO_OUT);
     
     // This example will use I2C0 on the default SDA and SCL pins (GP4, GP5 on a Pico)
-    i2c_init(i2c_default, 100 * 1000);
+    i2c_init(i2c0, 100 * 1000);
     gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
     gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
+
+    i2c_init(i2c1, 100 * 1000);
+    gpio_set_function(I2C1_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(I2C1_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C1_SDA_PIN);
+    gpio_pull_up(I2C1_SDA_PIN);
 
     // Keyboard setup
     gpio_init(KBD_DATA_PIN);
@@ -214,11 +231,12 @@ int main(int argc, const char** argv) {
     StationDemodulatorListener demodListener(&display);
     demod.setListener(&demodListener);
 
-    const unsigned int markFreq = 667;
-    const unsigned int spaceFreq = 600;
-
-    // Setup interface to second I2C port
-    Si5351Modulator si5351;
+    // SI5351 setup
+    cout << "Initializing Si5351 ..." << endl;
+    si_init(i2c1);
+    Si5351Modulator modulator(clk, 7042000, markFreq, spaceFreq, 
+        (1000 * samplesPerSymbol) / sampleFreq);
+    cout << "Initialized Si5351" << endl;
 
     // Here we can inject a tuning error to show that the demodulator will
     // still find the signal.
@@ -251,9 +269,16 @@ int main(int argc, const char** argv) {
 
         if (transmitFlag) {
             cout << "Transmitting ..." << endl;
+            // Disable the receiver
             adc_run(false);
             // Make a message and sent it
+            const char* msg = "DE KC1FSZ, HELLO SCAMP!";
+            Frame30 frames[32];
+            uint16_t framesSent = modulateMessage(msg, modulator, frames, 32);
+            cout << endl << "Sent " << framesSent << endl;
+            // Re-enable the receiver
             adc_run(true);
+            transmitFlag = false;
         }
     }
 

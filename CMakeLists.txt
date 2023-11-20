@@ -28,7 +28,8 @@ add_executable(main
 	hello-scamp/ClockRecoveryDLL.cpp 
   hello-scamp/Demodulator.cpp 
   hello-scamp/TestDemodulatorListener.cpp
-)
+  hello-pico-si5351/si5351.c 
+	)
 pico_enable_stdio_usb(main 1)
 pico_enable_stdio_uart(main 1)
 target_compile_definitions(main PUBLIC PICO_BUILD=1)
