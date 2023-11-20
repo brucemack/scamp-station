@@ -11,6 +11,7 @@ add_executable(main
   main.cpp 
   StationDemodulatorListener.cpp
   Si5351Modulator.cpp
+  EditorState.cpp
   hello-lcd/HD44780.cpp hello-lcd/HD44780_PCF8574.cpp 
   hello-lcd/tests/TestI2CInterface.cpp 
   hello-lcd/tests/TestClockInterface.cpp

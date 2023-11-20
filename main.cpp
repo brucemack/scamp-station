@@ -28,6 +28,7 @@
 
 #include "StationDemodulatorListener.h"
 #include "Si5351Modulator.h"
+#include "EditorState.h"
 
 #define LED_PIN (25)
 
@@ -257,6 +258,10 @@ int main(int argc, const char** argv) {
     // still find the signal.
     const unsigned int tuningErrorHz = 0;    
 
+    // Editor
+    char editorSpace[80];
+    EditorState editorState(editorSpace, (uint16_t)80);
+
     // Prevent exit
     while (1) { 
 
@@ -310,6 +315,16 @@ int main(int argc, const char** argv) {
             } else {
                 printf("KBD: %02x %d %d %d %d\n", (int)ev.scanCode, 
                     (int)ev.shiftState, (int)ev.ctlState, (int)ev.altState);
+
+                char a = ev.getAscii();
+                if (a != 0) {
+                    editorState.addChar(a);
+                    editorState.render();
+                } else if (ev.scanCode == PS2_SCAN_BSP) {
+                    editorState.keyBackspace();
+                    editorState.render();
+                }
+
             }
         }
     }
