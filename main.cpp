@@ -47,10 +47,12 @@ using namespace scamp;
 
 static const uint16_t sampleFreq = 2000;
 static const uint32_t adcClockHz = 48000000;
-static const uint16_t lowFreq = 50;
+static const uint16_t lowFreq = 100;
 static const unsigned int samplesPerSymbol = 60;
 static const unsigned int markFreq = 667;
 static const unsigned int spaceFreq = 600;
+// Tuned at 7042000 (calibration problem)
+static const uint32_t rfFreq = 7042600;
 
 // The size of the FFT used for frequency acquisition
 static const uint16_t log2fftN = 9;
@@ -73,6 +75,7 @@ static queue_t kbdEventQueue;
 
 static bool unlockFlag = false; 
 static bool transmitFlag = false;
+static bool cwFlag = false;
 
 // Diagnostic area
 //static TestDemodulatorListener::Sample samples[2000];
@@ -85,6 +88,8 @@ public:
             unlockFlag = true; 
         } else if (scanCode == 0x05) {
             transmitFlag = true;
+        } else if (scanCode == 0x06) {
+            cwFlag = true;
         } else {
             printf("KBD: %02x %d %d %d %d\n", (int)scanCode, 
                 (int)inExtended,
@@ -234,8 +239,10 @@ int main(int argc, const char** argv) {
     // SI5351 setup
     cout << "Initializing Si5351 ..." << endl;
     si_init(i2c1);
-    Si5351Modulator modulator(clk, 7042000, markFreq, spaceFreq, 
+    si_enable(0, false);
+    Si5351Modulator modulator(clk, markFreq, spaceFreq, 
         (1000 * samplesPerSymbol) / sampleFreq);
+    modulator.setBaseFreq(rfFreq);
     cout << "Initialized Si5351" << endl;
 
     // Here we can inject a tuning error to show that the demodulator will
@@ -274,12 +281,26 @@ int main(int argc, const char** argv) {
             // Make a message and sent it
             const char* msg = "DE KC1FSZ, HELLO SCAMP!";
             Frame30 frames[32];
+            si_enable(0, true);
             uint16_t framesSent = modulateMessage(msg, modulator, frames, 32);
+            si_enable(0, false);
             cout << endl << "Sent " << framesSent << endl;
             // Re-enable the receiver
             adc_run(true);
             transmitFlag = false;
         }
+
+        if (cwFlag) {
+            // Disable the receiver
+            adc_run(false);
+            si_enable(0, true);
+            modulator.sendCW();
+            si_enable(0, false);
+            // Re-enable the receiver
+            adc_run(true);
+            cwFlag = false;
+        }
+
     }
 
     return 0;

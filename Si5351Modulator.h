@@ -13,11 +13,14 @@ class Si5351Modulator : public Modulator {
 public:
 
     Si5351Modulator(ClockInterface& clock,
-        uint32_t baseFreq, uint32_t markOffset, uint32_t spaceOffset,
-        uint32_t holdMs);
+        uint32_t markOffset, uint32_t spaceOffset, uint32_t holdMs);
     virtual ~Si5351Modulator();
 
+    void setBaseFreq(uint32_t freqHz);
     void enable(bool on);
+    void sendCW();
+    void sendCQ();
+
     void sendSilence();
     void sendMark();
     void sendSpace();
@@ -25,7 +28,7 @@ public:
 private:
 
     ClockInterface& _clock;
-    uint32_t _baseFreq;
+    uint32_t _baseFreq = 0;
     uint32_t _markOffset;
     uint32_t _spaceOffset;
     uint32_t _holdMs;

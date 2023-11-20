@@ -9,10 +9,8 @@ using namespace std;
 namespace scamp {
 
 Si5351Modulator::Si5351Modulator(ClockInterface& clock,
-    uint32_t baseFreq, uint32_t markOffset, 
-    uint32_t spaceOffset, uint32_t holdMs)
+    uint32_t markOffset, uint32_t spaceOffset, uint32_t holdMs)
 :   _clock(clock),
-    _baseFreq(baseFreq), 
     _markOffset(markOffset),
     _spaceOffset(spaceOffset),
     _holdMs(holdMs) {
@@ -21,8 +19,20 @@ Si5351Modulator::Si5351Modulator(ClockInterface& clock,
 Si5351Modulator::~Si5351Modulator() {    
 }
 
+void Si5351Modulator::setBaseFreq(uint32_t freqHz) {
+    _baseFreq = freqHz;
+}
+
 void Si5351Modulator::enable(bool on) {
     si_enable(0, on);
+}
+
+void Si5351Modulator::sendCW() {
+    si_evaluate(0, _baseFreq + _markOffset);
+    _clock.sleepMs(1000);
+}
+
+void Si5351Modulator::sendCQ() {
 }
 
 void Si5351Modulator::sendSilence() {
