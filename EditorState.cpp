@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cstring>
+
 #include "EditorState.h"
 
 using namespace std;
@@ -30,10 +32,15 @@ void EditorState::clear() {
     for (uint16_t i = 0; i < _editSpaceSize; i++) {
         _editSpace[i] = 0;
     }
+    _cursor = 0;
 }
 
-void EditorState::render() const {
-    cout << "RENDER: " << _editSpace << endl;
+void EditorState::render(HD44780& display) const {
+    //cout << "RENDER: " << _editSpace << endl;
+    display.clearDisplay();
+    int l = strlen(_editSpace);
+    display.writeLinear(HD44780::Format::FMT_20x4, (const uint8_t*)_editSpace, l, 0);
+    display.setCursorLinear(HD44780::Format::FMT_20x4, _cursor);
 }
 
 

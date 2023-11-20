@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 
 #ifdef PICO_BUILD
 #include "pico/stdlib.h"
@@ -99,6 +100,14 @@ public:
     };
 };
 
+static char upcase(char c) {
+    if (c >= 97 && c <= 122) {
+        return c - 32;
+    } else {
+        return c;
+    }
+}
+
 // ----- ADC RELATED ------------------------------------------------------
 
 // This is the queue used to pass ADC samples from the ISR and into the main 
@@ -166,7 +175,7 @@ int main(int argc, const char** argv) {
 #endif
 
 #ifdef PICO_BUILD
-    PICOI2CInterface i2c(cout);
+    PICOI2CInterface i2c(i2c0, cout);
     PICOClockInterface clk;
 #else
     TestI2CInterface i2c(cout);
@@ -183,28 +192,14 @@ int main(int argc, const char** argv) {
 
     printf("SCAMP Station\n");
     
-    cout << "----- Init" << endl;
     display.init();
-    cout << "----- Set Display" << endl;
     display.setDisplay(false, false, false);
-    cout << "----- Clear" << endl;
     display.clearDisplay();
-    
-    cout << "----- Set Entry Mode" << endl;
     display.setEntryMode(true, false);  // Move sursor, no shift
-    cout << "----- Set Display" << endl;
     display.setDisplay(true, true, true);
-    cout << "----- Home" << endl;
     display.returnHome();
-    cout << "----- Set DDRAM Address" << endl;
     display.setDDRAMAddr(0);
-    // This is an important test - it should demonstrate a wrap-around
-    cout << "----- Write Message" << endl;
     display.writeLinear(HD44780::Format::FMT_20x4, (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
-
-    cout << "I2C cycles: " << i2c.getCycleCount() << endl;
-    cout << "Busy Count: " << display.getBusyCount() << endl;
-
    
 #ifdef PICO_BUILD
 
@@ -291,19 +286,28 @@ int main(int argc, const char** argv) {
             if (ev.scanCode == 0x0076) {
                 cout << "Reset demodulator" << endl;
                 demod.reset();
-            } else if (ev.scanCode == PS2_SCAN_F1) {
-                cout << "Transmitting ..." << endl;
-                // Disable the receiver
-                adc_run(false);
-                // Make a message and sent it
-                const char* msg = "DE KC1FSZ, HELLO SCAMP!";
-                Frame30 frames[32];
-                si_enable(0, true);
-                uint16_t framesSent = modulateMessage(msg, modulator, frames, 32);
-                si_enable(0, false);
-                cout << endl << "Sent " << framesSent << endl;
-                // Re-enable the receiver
-                adc_run(true);
+            } else if (ev.scanCode == PS2_SCAN_ENTER) {
+                int l = strlen(editorSpace);
+                if (l > 0) {
+                    // Set message
+                    display.clearDisplay();
+                    display.writeLinear(HD44780::Format::FMT_20x4, 
+                        (const uint8_t*)"SENDING", 7, 0);
+                    // Disable the receiver
+                    adc_run(false);
+                    //// Make a message and sent it
+                    //const char* msg = "DE KC1FSZ, HELLO SCAMP!";
+                    cout << "Transmitting: " << editorSpace << endl;
+                    Frame30 frames[48];
+                    si_enable(0, true);
+                    uint16_t framesSent = modulateMessage(editorSpace, 
+                        modulator, frames, 48);
+                    si_enable(0, false);
+                    editorState.clear();
+                    editorState.render(display);
+                    // Re-enable the receiver
+                    adc_run(true);
+                }
             } else if (ev.scanCode == PS2_SCAN_F2) {
                 // Disable the receiver
                 adc_run(false);
@@ -318,11 +322,11 @@ int main(int argc, const char** argv) {
 
                 char a = ev.getAscii();
                 if (a != 0) {
-                    editorState.addChar(a);
-                    editorState.render();
+                    editorState.addChar(upcase(a));
+                    editorState.render(display);
                 } else if (ev.scanCode == PS2_SCAN_BSP) {
                     editorState.keyBackspace();
-                    editorState.render();
+                    editorState.render(display);
                 }
 
             }

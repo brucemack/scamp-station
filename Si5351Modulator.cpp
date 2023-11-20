@@ -40,15 +40,11 @@ void Si5351Modulator::sendSilence() {
 }
 
 void Si5351Modulator::sendMark() {
-    cout << "1";
-    cout.flush();
     si_evaluate(0, _baseFreq + _markOffset);
     _clock.sleepMs(_holdMs);
 }
 
 void Si5351Modulator::sendSpace() {
-    cout << "0";
-    cout.flush();
     si_evaluate(0, _baseFreq + _spaceOffset);
     _clock.sleepMs(_holdMs);
 }
