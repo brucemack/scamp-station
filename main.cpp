@@ -19,10 +19,12 @@
 #include "hello-ps2keyboard/PS2Keyboard.h"
 #endif
 
-#include "StationDemodulatorListener.h"
 #include "hello-ps2keyboard/KeyboardListener.h"
 #include "hello-scamp/Demodulator.h"
 #include "hello-scamp/TestDemodulatorListener.h"
+
+#include "StationDemodulatorListener.h"
+#include "Si5351Modulator.h"
 
 #define LED_PIN (25)
 
@@ -62,16 +64,21 @@ static bool unlockFlag = false;
 static bool transmitFlag = false;
 
 // Diagnostic area
-static TestDemodulatorListener::Sample samples[2000];
+//static TestDemodulatorListener::Sample samples[2000];
 
-class Listener : public KeyboardListener {
+// Keyboard listener
+class KeyListener : public KeyboardListener {
 public:
-
     void onKeyDown(uint8_t scanCode, bool inExtended, bool shiftState, bool ctlState, bool altState) { 
-        printf("KBD: %02x %d %d %d %d\n", (int)scanCode, 
-            (int)inExtended,
-            (int)shiftState, (int)ctlState, (int)altState);
-        unlockFlag = true; 
+        if (scanCode == 0x76) {
+            unlockFlag = true; 
+        } else if (scanCode == 0x05) {
+            transmitFlag = true;
+        } else {
+            printf("KBD: %02x %d %d %d %d\n", (int)scanCode, 
+                (int)inExtended,
+                (int)shiftState, (int)ctlState, (int)altState);
+        }
     };
 };
 
@@ -142,9 +149,9 @@ int main(int argc, const char** argv) {
     uint8_t addr = 0x27;
     // 4-bit interface, 2 rows, 5x8 characters
     HD44780_PCF8574 display(2, false, addr, &i2c, &clk);
+
     // Keyboard
-    Listener listener;
-    // ADC setup
+    KeyListener listener;
 
     printf("SCAMP Station\n");
     
@@ -210,6 +217,9 @@ int main(int argc, const char** argv) {
     const unsigned int markFreq = 667;
     const unsigned int spaceFreq = 600;
 
+    // Setup interface to second I2C port
+    Si5351Modulator si5351;
+
     // Here we can inject a tuning error to show that the demodulator will
     // still find the signal.
     const unsigned int tuningErrorHz = 0;    
@@ -234,11 +244,17 @@ int main(int argc, const char** argv) {
         }
 
         if (unlockFlag) {
+            cout << "Reset demodulator" << endl;
             demod.reset();
             unlockFlag = false;
-        }            
+        }
 
-        if ()
+        if (transmitFlag) {
+            cout << "Transmitting ..." << endl;
+            adc_run(false);
+            // Make a message and sent it
+            adc_run(true);
+        }
     }
 
     return 0;

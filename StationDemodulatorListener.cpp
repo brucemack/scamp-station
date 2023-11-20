@@ -45,7 +45,7 @@ void StationDemodulatorListener::received(char asciiChar) {
 }
 
 void StationDemodulatorListener::receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr) {
-    cout << "BIT " << (int)bit << endl;    
+    //cout << "BIT " << (int)bit << endl;    
 }
 
 

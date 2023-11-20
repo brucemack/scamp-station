@@ -10,6 +10,7 @@ pico_sdk_init()
 add_executable(main
   main.cpp 
   StationDemodulatorListener.cpp
+  Si5351Modulator.cpp
   hello-lcd/HD44780.cpp hello-lcd/HD44780_PCF8574.cpp 
   hello-lcd/tests/TestI2CInterface.cpp 
   hello-lcd/tests/TestClockInterface.cpp
@@ -24,6 +25,7 @@ add_executable(main
 	hello-scamp/Frame30.cpp 
   hello-scamp/Util.cpp 
 	hello-scamp/ClockRecoveryPLL.cpp 
+	hello-scamp/ClockRecoveryDLL.cpp 
   hello-scamp/Demodulator.cpp 
   hello-scamp/TestDemodulatorListener.cpp
 )
