@@ -37,8 +37,6 @@
 #define I2C1_SDA_PIN 6  // Pin 9  - data
 #define I2C1_SCL_PIN 7  // Pin 10 - clock
 
-
-
 #define KBD_DATA_PIN (2)
 #define KBD_CLOCK_PIN (3)
 
@@ -66,37 +64,45 @@ static cq15 fftResult[fftN];
 static Demodulator demod(sampleFreq, lowFreq, log2fftN,
     trigTable, window, fftResult, buffer);
 
-// This is the queue used to pass ADC samples from the ISR and into the main 
-// event loop.
-static queue_t adcSampleQueue;
-// This is the queue ussed to pass keyboard activity from the ISR into the main
-// event loop
-static queue_t kbdEventQueue;
-
-static bool unlockFlag = false; 
-static bool transmitFlag = false;
-static bool cwFlag = false;
-
 // Diagnostic area
 //static TestDemodulatorListener::Sample samples[2000];
+
+// ----- KEYBOARD RELATED -------------------------------------------------
+
+struct KeyEvent {
+
+    uint16_t scanCode;
+    bool shiftState;
+    bool ctlState;
+    bool altState;
+
+    char getAscii() {
+        return keyboard_code_to_ascii(scanCode, shiftState);
+    }
+};
+
+// This is the queue ussed to pass keyboard activity from the ISR into the main
+// event loop
+static queue_t keyEventQueue;
 
 // Keyboard listener
 class KeyListener : public KeyboardListener {
 public:
-    void onKeyDown(uint8_t scanCode, bool inExtended, bool shiftState, bool ctlState, bool altState) { 
-        if (scanCode == 0x76) {
-            unlockFlag = true; 
-        } else if (scanCode == 0x05) {
-            transmitFlag = true;
-        } else if (scanCode == 0x06) {
-            cwFlag = true;
-        } else {
-            printf("KBD: %02x %d %d %d %d\n", (int)scanCode, 
-                (int)inExtended,
-                (int)shiftState, (int)ctlState, (int)altState);
-        }
+    void onKeyDown(uint16_t scanCode, bool shiftState, bool ctlState, bool altState) { 
+        KeyEvent ev;
+        ev.scanCode = scanCode;
+        ev.shiftState = shiftState;
+        ev.ctlState = ctlState;
+        ev.altState = altState;
+        queue_try_add(&keyEventQueue, &ev);
     };
 };
+
+// ----- ADC RELATED ------------------------------------------------------
+
+// This is the queue used to pass ADC samples from the ISR and into the main 
+// event loop.
+static queue_t adcSampleQueue;
 
 static uint32_t sampleCount = 0;
 static uint16_t maxAdcSampleQueue = 0;
@@ -151,7 +157,6 @@ int main(int argc, const char** argv) {
     gpio_set_dir(KBD_DATA_PIN, GPIO_IN);   
     gpio_init(KBD_CLOCK_PIN);
     gpio_set_dir(KBD_CLOCK_PIN, GPIO_IN);
-
     
     gpio_put(LED_PIN, 1);
     sleep_ms(1000);
@@ -201,6 +206,9 @@ int main(int argc, const char** argv) {
 
    
 #ifdef PICO_BUILD
+
+    // This is the queue used to collect data from the keyboard
+    queue_init(&keyEventQueue, sizeof(KeyEvent), 8);
 
     keyboard_init(KBD_CLOCK_PIN, KBD_DATA_PIN, &listener);
     gpio_set_irq_enabled_with_callback(KBD_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, 
@@ -268,39 +276,42 @@ int main(int argc, const char** argv) {
             maxUs = std::max(maxUs, (end - start));
         }
 
-        if (unlockFlag) {
-            cout << "Reset demodulator" << endl;
-            demod.reset();
-            unlockFlag = false;
-        }
+        // Check for keyboard activity
+        if (!queue_is_empty(&keyEventQueue)) {
+            // Pull off keyboard event
+            KeyEvent ev;
+            queue_remove_blocking(&keyEventQueue, &ev);
 
-        if (transmitFlag) {
-            cout << "Transmitting ..." << endl;
-            // Disable the receiver
-            adc_run(false);
-            // Make a message and sent it
-            const char* msg = "DE KC1FSZ, HELLO SCAMP!";
-            Frame30 frames[32];
-            si_enable(0, true);
-            uint16_t framesSent = modulateMessage(msg, modulator, frames, 32);
-            si_enable(0, false);
-            cout << endl << "Sent " << framesSent << endl;
-            // Re-enable the receiver
-            adc_run(true);
-            transmitFlag = false;
+            // TODO: FIX!
+            if (ev.scanCode == 0x0076) {
+                cout << "Reset demodulator" << endl;
+                demod.reset();
+            } else if (ev.scanCode == PS2_SCAN_F1) {
+                cout << "Transmitting ..." << endl;
+                // Disable the receiver
+                adc_run(false);
+                // Make a message and sent it
+                const char* msg = "DE KC1FSZ, HELLO SCAMP!";
+                Frame30 frames[32];
+                si_enable(0, true);
+                uint16_t framesSent = modulateMessage(msg, modulator, frames, 32);
+                si_enable(0, false);
+                cout << endl << "Sent " << framesSent << endl;
+                // Re-enable the receiver
+                adc_run(true);
+            } else if (ev.scanCode == PS2_SCAN_F2) {
+                // Disable the receiver
+                adc_run(false);
+                si_enable(0, true);
+                modulator.sendCW();
+                si_enable(0, false);
+                // Re-enable the receiver
+                adc_run(true);
+            } else {
+                printf("KBD: %02x %d %d %d %d\n", (int)ev.scanCode, 
+                    (int)ev.shiftState, (int)ev.ctlState, (int)ev.altState);
+            }
         }
-
-        if (cwFlag) {
-            // Disable the receiver
-            adc_run(false);
-            si_enable(0, true);
-            modulator.sendCW();
-            si_enable(0, false);
-            // Re-enable the receiver
-            adc_run(true);
-            cwFlag = false;
-        }
-
     }
 
     return 0;
