@@ -59,6 +59,7 @@ static queue_t adcSampleQueue;
 static queue_t kbdEventQueue;
 
 static bool unlockFlag = false; 
+static bool transmitFlag = false;
 
 // Diagnostic area
 static TestDemodulatorListener::Sample samples[2000];
@@ -66,7 +67,12 @@ static TestDemodulatorListener::Sample samples[2000];
 class Listener : public KeyboardListener {
 public:
 
-    void onKey() { unlockFlag = true; };
+    void onKeyDown(uint8_t scanCode, bool inExtended, bool shiftState, bool ctlState, bool altState) { 
+        printf("KBD: %02x %d %d %d %d\n", (int)scanCode, 
+            (int)inExtended,
+            (int)shiftState, (int)ctlState, (int)altState);
+        unlockFlag = true; 
+    };
 };
 
 static uint32_t sampleCount = 0;
@@ -74,6 +80,7 @@ static uint16_t maxAdcSampleQueue = 0;
 
 // Decorates a function name, such that the function will execute from RAM 
 // (assuming it is not inlined into a flash function by the compiler)
+#ifdef PICO_BUILD
 static void __not_in_flash_func(adc_irq_handler) () {    
     while (!adc_fifo_is_empty()) {
         const int16_t lastSample = adc_fifo_get();
@@ -86,6 +93,7 @@ static void __not_in_flash_func(adc_irq_handler) () {
             (uint16_t)queue_get_level(&adcSampleQueue));
     }
 }
+#endif
 
 uint32_t get_us() {
     absolute_time_t at = get_absolute_time();
@@ -226,16 +234,11 @@ int main(int argc, const char** argv) {
         }
 
         if (unlockFlag) {
-
-            cout << queue_get_level(&adcSampleQueue) << " " << maxUs    
-                << " " << maxAdcSampleQueue
-                << endl;
-
             demod.reset();
-            //listener.dumpSamples(cout);
-          
             unlockFlag = false;
         }            
+
+        if ()
     }
 
     return 0;
