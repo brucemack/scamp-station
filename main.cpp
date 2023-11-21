@@ -139,9 +139,24 @@ uint32_t get_us() {
     return to_us_since_boot(at);
 }
 
+/**
+ * Formats the tuning frequency into "7.042 5" format.
+*/
+static void fmtFreq(Si5341Modulator& mod, char* buffer) {
+    uint32_t f = mod.getBaseFreq();
+    uint32_t m = f / 1000000;
+    uint32_t k = (f / 1000) % 1000;
+    uint32_t h = (f % 1000) / 100;
+    sprintf("%2d.%03d %d", m, k, h);
+}
+
 static uint32_t maxUs = 0;
 
 enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
+
+
+
+
 
 int main(int argc, const char** argv) {
 
@@ -330,6 +345,12 @@ int main(int argc, const char** argv) {
                 si_enable(0, false);
                 // Re-enable the receiver
                 adc_run(true);
+            } else  if (ev.scanCode == PS2_SCAN_UP) {
+                modulator.setBaseFreq(modulator.getBaseFreq() + 500);
+                displayDirty = true;
+            } else  if (ev.scanCode == PS2_SCAN_DOWN) {
+                modulator.setBaseFreq(modulator.getBaseFreq() - 500);
+                displayDirty = true;
             } else {
                 char a = ev.getAscii();
                 if (a != 0) {
@@ -353,13 +374,29 @@ int main(int argc, const char** argv) {
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
-                    (uint8_t*)"V0.02", 5, 20);
+                    (uint8_t*)"V0.03", 5, 20);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"Copyright (c) 2023", 18, 40);
             } else if (activePage == DisplayPage::PAGE_STATUS) {
+                
                 display.clearDisplay();
+
+                char text[20];
+                mmemset(text, 0, 20);
+                if (demod.isFrequencyLocked()) {
+                    sprintf(text,"LOCKED %03d", demod.getMarkFreq());
+                } else {
+                    sprintf(text,"SCANNING", demod.getMarkFreq());
+                }
                 display.writeLinear(HD44780::Format::FMT_20x4, 
-                    (uint8_t*)"STATUS", 6, 0);
+                    (uint8_t*)text, 20, 0);
+
+                // Frequency
+                mmemset(text, 0, 20);
+                fmtFreq(modulator, text);
+                display.writeLinear(HD44780::Format::FMT_20x4, 
+                    (uint8_t*)text, 20, 20);
+
             } else if (activePage == DisplayPage::PAGE_RX) {
                 demodListener.render(display);
             } else if (activePage == DisplayPage::PAGE_TX) {

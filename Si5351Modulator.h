@@ -17,6 +17,7 @@ public:
     virtual ~Si5351Modulator();
 
     void setBaseFreq(uint32_t freqHz);
+    uint32_t getBaseFreq() const { return _baseFreq; };
     void enable(bool on);
     void sendCW();
     void sendCQ();
