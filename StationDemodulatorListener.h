@@ -36,9 +36,20 @@ public:
     virtual void received(char asciiChar);
     virtual void receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr);
 
+    /**
+     * Returns an indication of whether any data has been received since the 
+     * last call.
+     */
+    bool isDirty();
+
+    void render(HD44780& display) const;
+
 private:
 
     HD44780* _display;
+    char _rxSpace[80];
+    uint16_t _rxSpaceUsed = 0;
+    bool _isDirty = false;
 };
 
 }

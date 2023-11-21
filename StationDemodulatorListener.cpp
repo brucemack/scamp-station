@@ -17,6 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "StationDemodulatorListener.h"
 
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 
@@ -40,12 +41,31 @@ void StationDemodulatorListener::badFrameReceived(uint32_t rawFrame) {
 }
 
 void StationDemodulatorListener::received(char asciiChar) {
-    cout << "CHAR: " << asciiChar << endl;
-    _display->write((uint8_t)asciiChar);
+
+    if (_rxSpaceUsed == 80) {
+        // Shift down by 20 characters
+        for (uint16_t i = 0; i < 60; i++) {
+            _rxSpace[i] = _rxSpace[i + 20];
+        }
+        _rxSpaceUsed = 60;
+    }
+    _rxSpace[_rxSpaceUsed++] = asciiChar;
+    _isDirty = true;
 }
 
 void StationDemodulatorListener::receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr) {
-    //cout << "BIT " << (int)bit << endl;    
+}
+
+bool StationDemodulatorListener::isDirty() {
+    bool r = _isDirty;
+    _isDirty = false;
+    return r;
+}
+
+void StationDemodulatorListener::render(HD44780& display) const {
+    display.clearDisplay();
+    display.writeLinear(HD44780::Format::FMT_20x4, 
+        (const uint8_t*)_rxSpace, _rxSpaceUsed, 0);
 }
 
 

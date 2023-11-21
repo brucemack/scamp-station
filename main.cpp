@@ -307,7 +307,7 @@ int main(int argc, const char** argv) {
                     // Set message
                     display.clearDisplay();
                     display.writeLinear(HD44780::Format::FMT_20x4, 
-                        (const uint8_t*)"Sending ...", 7, 0);
+                        (const uint8_t*)"Sending ...", 11, 0);
                     // Disable the receiver
                     adc_run(false);
                     // Radio on
@@ -361,14 +361,13 @@ int main(int argc, const char** argv) {
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"STATUS", 6, 0);
             } else if (activePage == DisplayPage::PAGE_RX) {
-                display.clearDisplay();
-                display.writeLinear(HD44780::Format::FMT_20x4, 
-                    (uint8_t*)"RECEIVE", 7, 0);
+                demodListener.render(display);
             } else if (activePage == DisplayPage::PAGE_TX) {
                 if (editorState.isClear()) {       
                     display.clearDisplay();
                     display.writeLinear(HD44780::Format::FMT_20x4, 
                         (uint8_t*)"Enter TX Text", 13, 60);
+                    display.setCursorLinear(HD44780::Format::FMT_20x4, 0);
                 } else {
                     editorState.render(display);
                 }
