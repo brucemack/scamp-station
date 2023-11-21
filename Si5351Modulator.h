@@ -33,6 +33,7 @@ private:
     uint32_t _markOffset;
     uint32_t _spaceOffset;
     uint32_t _holdMs;
+    uint32_t _correction = 600;
 };
 
 }

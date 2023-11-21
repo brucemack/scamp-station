@@ -28,7 +28,7 @@ void Si5351Modulator::enable(bool on) {
 }
 
 void Si5351Modulator::sendCW() {
-    si_evaluate(0, _baseFreq + _markOffset);
+    si_evaluate(0, _baseFreq + _markOffset + _correction);
     _clock.sleepMs(1000);
 }
 
@@ -40,12 +40,12 @@ void Si5351Modulator::sendSilence() {
 }
 
 void Si5351Modulator::sendMark() {
-    si_evaluate(0, _baseFreq + _markOffset);
+    si_evaluate(0, _baseFreq + _markOffset + _correction);
     _clock.sleepMs(_holdMs);
 }
 
 void Si5351Modulator::sendSpace() {
-    si_evaluate(0, _baseFreq + _spaceOffset);
+    si_evaluate(0, _baseFreq + _spaceOffset + _correction);
     _clock.sleepMs(_holdMs);
 }
 

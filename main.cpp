@@ -51,8 +51,7 @@ static const uint16_t lowFreq = 100;
 static const unsigned int samplesPerSymbol = 60;
 static const unsigned int markFreq = 667;
 static const unsigned int spaceFreq = 600;
-// Tuned at 7042000 (calibration problem)
-static const uint32_t rfFreq = 7042600;
+static const uint32_t rfFreq = 7042000;
 
 // The size of the FFT used for frequency acquisition
 static const uint16_t log2fftN = 9;
@@ -142,12 +141,13 @@ uint32_t get_us() {
 /**
  * Formats the tuning frequency into "7.042 5" format.
 */
-static void fmtFreq(Si5341Modulator& mod, char* buffer) {
+static void fmtFreq(Si5351Modulator& mod, char* buffer) {
     uint32_t f = mod.getBaseFreq();
     uint32_t m = f / 1000000;
     uint32_t k = (f / 1000) % 1000;
     uint32_t h = (f % 1000) / 100;
-    sprintf("%2d.%03d %d", m, k, h);
+    sprintf(buffer, "%2d.%03d %d", m, k, h);
+    buffer[8] = 32;
 }
 
 static uint32_t maxUs = 0;
@@ -337,7 +337,7 @@ int main(int argc, const char** argv) {
                     adc_run(true);
                     displayDirty = true;
                 }
-            } else if (ev.scanCode == PS2_SCAN_F2) {
+            } else if (ev.scanCode == PS2_SCAN_F12) {
                 // Disable the receiver
                 adc_run(false);
                 si_enable(0, true);
@@ -382,18 +382,19 @@ int main(int argc, const char** argv) {
                 display.clearDisplay();
 
                 char text[20];
-                mmemset(text, 0, 20);
-                if (demod.isFrequencyLocked()) {
-                    sprintf(text,"LOCKED %03d", demod.getMarkFreq());
-                } else {
-                    sprintf(text,"SCANNING", demod.getMarkFreq());
-                }
+
+                // Frequency
+                memset(text, 32, 20);
+                fmtFreq(modulator, text);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)text, 20, 0);
 
-                // Frequency
-                mmemset(text, 0, 20);
-                fmtFreq(modulator, text);
+                memset(text, 32, 20);
+                if (demod.isFrequencyLocked()) {
+                    sprintf(text,"LOCKED %03d", demod.getMarkFreq());
+                } else {
+                    sprintf(text,"NOLOCK", demod.getMarkFreq());
+                }
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)text, 20, 20);
 
