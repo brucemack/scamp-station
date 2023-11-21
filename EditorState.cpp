@@ -35,8 +35,11 @@ void EditorState::clear() {
     _cursor = 0;
 }
 
+bool EditorState::isClear() const {
+    return _editSpace[0] == 0;
+}
+
 void EditorState::render(HD44780& display) const {
-    //cout << "RENDER: " << _editSpace << endl;
     display.clearDisplay();
     int l = strlen(_editSpace);
     display.writeLinear(HD44780::Format::FMT_20x4, (const uint8_t*)_editSpace, l, 0);

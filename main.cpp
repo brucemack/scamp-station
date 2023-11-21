@@ -141,6 +141,8 @@ uint32_t get_us() {
 
 static uint32_t maxUs = 0;
 
+enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
+
 int main(int argc, const char** argv) {
 
 #ifdef PICO_BUILD
@@ -199,7 +201,6 @@ int main(int argc, const char** argv) {
     display.setDisplay(true, true, true);
     display.returnHome();
     display.setDDRAMAddr(0);
-    display.writeLinear(HD44780::Format::FMT_20x4, (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
    
 #ifdef PICO_BUILD
 
@@ -254,8 +255,11 @@ int main(int argc, const char** argv) {
     const unsigned int tuningErrorHz = 0;    
 
     // Editor
-    char editorSpace[80];
+    char editorSpace[80];  
     EditorState editorState(editorSpace, (uint16_t)80);
+
+    DisplayPage activePage = DisplayPage::PAGE_LOGO;
+    bool displayDirty = true;
 
     // Prevent exit
     while (1) { 
@@ -282,31 +286,41 @@ int main(int argc, const char** argv) {
             KeyEvent ev;
             queue_remove_blocking(&keyEventQueue, &ev);
 
-            // TODO: FIX!
-            if (ev.scanCode == 0x0076) {
-                cout << "Reset demodulator" << endl;
+            if (ev.scanCode == PS2_SCAN_ESC) {
                 demod.reset();
+                displayDirty = true;
+            } else  if (ev.scanCode == PS2_SCAN_F1) {
+                activePage = DisplayPage::PAGE_LOGO;
+                displayDirty = true;
+            } else  if (ev.scanCode == PS2_SCAN_F2) {
+                activePage = DisplayPage::PAGE_STATUS;
+                displayDirty = true;
+            } else  if (ev.scanCode == PS2_SCAN_F3) {
+                activePage = DisplayPage::PAGE_TX;
+                displayDirty = true;
+            } else  if (ev.scanCode == PS2_SCAN_F4) {
+                activePage = DisplayPage::PAGE_RX;
+                displayDirty = true;
             } else if (ev.scanCode == PS2_SCAN_ENTER) {
                 int l = strlen(editorSpace);
                 if (l > 0) {
                     // Set message
                     display.clearDisplay();
                     display.writeLinear(HD44780::Format::FMT_20x4, 
-                        (const uint8_t*)"SENDING", 7, 0);
+                        (const uint8_t*)"Sending ...", 7, 0);
                     // Disable the receiver
                     adc_run(false);
-                    //// Make a message and sent it
-                    //const char* msg = "DE KC1FSZ, HELLO SCAMP!";
-                    cout << "Transmitting: " << editorSpace << endl;
-                    Frame30 frames[48];
+                    // Radio on
                     si_enable(0, true);
+                    Frame30 frames[48];
                     uint16_t framesSent = modulateMessage(editorSpace, 
                         modulator, frames, 48);
+                    // Radio off
                     si_enable(0, false);
                     editorState.clear();
-                    editorState.render(display);
                     // Re-enable the receiver
                     adc_run(true);
+                    displayDirty = true;
                 }
             } else if (ev.scanCode == PS2_SCAN_F2) {
                 // Disable the receiver
@@ -317,20 +331,52 @@ int main(int argc, const char** argv) {
                 // Re-enable the receiver
                 adc_run(true);
             } else {
-                printf("KBD: %02x %d %d %d %d\n", (int)ev.scanCode, 
-                    (int)ev.shiftState, (int)ev.ctlState, (int)ev.altState);
-
                 char a = ev.getAscii();
                 if (a != 0) {
                     editorState.addChar(upcase(a));
-                    editorState.render(display);
+                    displayDirty = true;
                 } else if (ev.scanCode == PS2_SCAN_BSP) {
                     editorState.keyBackspace();
-                    editorState.render(display);
+                    displayDirty = true;
+                } else {
+                    printf("KBD: %02x %d %d %d %d\n", (int)ev.scanCode, 
+                        (int)ev.shiftState, (int)ev.ctlState, (int)ev.altState);
                 }
-
             }
         }
+
+        // Display render
+        if (displayDirty) {
+
+            if (activePage == DisplayPage::PAGE_LOGO) {
+                display.clearDisplay();
+                display.writeLinear(HD44780::Format::FMT_20x4, 
+                    (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
+                display.writeLinear(HD44780::Format::FMT_20x4, 
+                    (uint8_t*)"V0.02", 5, 20);
+                display.writeLinear(HD44780::Format::FMT_20x4, 
+                    (uint8_t*)"Copyright (c) 2023", 18, 40);
+            } else if (activePage == DisplayPage::PAGE_STATUS) {
+                display.clearDisplay();
+                display.writeLinear(HD44780::Format::FMT_20x4, 
+                    (uint8_t*)"STATUS", 6, 0);
+            } else if (activePage == DisplayPage::PAGE_RX) {
+                display.clearDisplay();
+                display.writeLinear(HD44780::Format::FMT_20x4, 
+                    (uint8_t*)"RECEIVE", 7, 0);
+            } else if (activePage == DisplayPage::PAGE_TX) {
+                if (editorState.isClear()) {       
+                    display.clearDisplay();
+                    display.writeLinear(HD44780::Format::FMT_20x4, 
+                        (uint8_t*)"Enter TX Text", 13, 60);
+                } else {
+                    editorState.render(display);
+                }
+            }
+
+            displayDirty = false;
+        }
+
     }
 
     return 0;

@@ -13,6 +13,7 @@ public:
     void addChar(char a);
     void keyBackspace();
 
+    bool isClear() const;
     void render(HD44780& display) const;
     void clear();
 
