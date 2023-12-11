@@ -23,8 +23,8 @@ public:
     void sendCQ();
 
     void sendSilence(uint32_t us);
-    void sendMark(uint23_t us);
-    void sendSpace(uint23_t us);
+    void sendMark(uint32_t us);
+    void sendSpace(uint32_t us);
 
 private:
 

@@ -30,7 +30,7 @@ StationDemodulatorListener::StationDemodulatorListener(HD44780* display)
 }
 
 void StationDemodulatorListener::frequencyLocked(uint16_t markFreq, uint16_t spaceFreq) {
-    cout << "LOCKED " << markFreq << endl;
+    cout << "[Locked on frequency " << markFreq << "/" << spaceFreq << "]" << endl;
     _logTrigger = true;
     _sampleCount = 0;
 }
@@ -40,7 +40,7 @@ void StationDemodulatorListener::dataSyncAcquired() {
 }
 
 void StationDemodulatorListener::badFrameReceived(uint32_t rawFrame) {
-    cout << endl << "[BAD FRAME]" << endl;
+    //cout << endl << "[BAD FRAME]" << endl;
 }
 
 void StationDemodulatorListener::received(char asciiChar) {
