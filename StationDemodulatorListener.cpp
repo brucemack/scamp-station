@@ -31,16 +31,22 @@ StationDemodulatorListener::StationDemodulatorListener(HD44780* display)
 
 void StationDemodulatorListener::frequencyLocked(uint16_t markFreq, uint16_t spaceFreq) {
     cout << "LOCKED " << markFreq << endl;
+    _logTrigger = true;
+    _sampleCount = 0;
 }
 
 void StationDemodulatorListener::dataSyncAcquired() {
-    cout << "DATA SYNC" << endl;
+    //cout << endl << "[DATA SYNC]" << endl;
 }
 
 void StationDemodulatorListener::badFrameReceived(uint32_t rawFrame) {
+    cout << endl << "[BAD FRAME]" << endl;
 }
 
 void StationDemodulatorListener::received(char asciiChar) {
+    //cout << endl << "CHAR: " << asciiChar << endl;
+    cout << asciiChar;
+    cout.flush();
 
     if (_rxSpaceUsed == 80) {
         // Shift down by 20 characters
@@ -54,6 +60,12 @@ void StationDemodulatorListener::received(char asciiChar) {
 }
 
 void StationDemodulatorListener::receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr) {
+    //cout << " [" << frameBitPos << "]=" << (int)bit;
+    //if (frameBitPos == 0) {
+    //    cout << "|";
+    //}
+    //cout << (int)bit;
+    //cout.flush();
 }
 
 bool StationDemodulatorListener::isDirty() {
@@ -68,5 +80,18 @@ void StationDemodulatorListener::render(HD44780& display) const {
         (const uint8_t*)_rxSpace, _rxSpaceUsed, 0);
 }
 
+void StationDemodulatorListener::sampleMetrics(uint8_t activeSymbol, bool capture, 
+    int32_t lastPLLError,
+    float* symbolCorr, float corrThreshold, float corrDiff, float sample) {
+    
+    _sampleCount++;
+
+    if (_logTrigger && 
+        _sampleCount >= _logStart && (_sampleCount - _logStart) < _logLen) {
+        cout << _sampleCount << " " << activeSymbol << " " << capture << " "
+            << lastPLLError << " | " << symbolCorr[1] << " " << symbolCorr[0] << " | "
+            << corrThreshold << " " << corrDiff << " [ " << sample << " ]" << endl;
+    }
+}
 
 }

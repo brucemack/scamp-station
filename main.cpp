@@ -66,7 +66,7 @@ static Demodulator demod(sampleFreq, lowFreq, log2fftN,
     trigTable, window, fftResult, buffer);
 
 // Diagnostic area
-//static TestDemodulatorListener::Sample samples[2000];
+static TestDemodulatorListener::Sample samples[2000];
 
 // ----- KEYBOARD RELATED -------------------------------------------------
 
@@ -153,10 +153,6 @@ static void fmtFreq(Si5351Modulator& mod, char* buffer) {
 static uint32_t maxUs = 0;
 
 enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
-
-
-
-
 
 int main(int argc, const char** argv) {
 
@@ -251,8 +247,9 @@ int main(int argc, const char** argv) {
 #endif
 
     // Create the demodulator listner
-    //TestDemodulatorListener testListener(cout, samples, 2000);
-    //testListener.setTriggerMode(TestDemodulatorListener::TriggerMode::ON_LOCK);
+    //TestDemodulatorListener demodListener(cout, samples, 180);
+    //demodListener.setTriggerMode(TestDemodulatorListener::TriggerMode::ON_LOCK);
+    //demodListener.setTriggerDelay(0);
     StationDemodulatorListener demodListener(&display);
     demod.setListener(&demodListener);
 
@@ -260,6 +257,8 @@ int main(int argc, const char** argv) {
     cout << "Initializing Si5351 ..." << endl;
     si_init(i2c1);
     si_enable(0, false);
+    // RECEIVE TEST
+    //si_enable(0, true);
     Si5351Modulator modulator(clk, markFreq, spaceFreq, 
         (1000 * samplesPerSymbol) / sampleFreq);
     modulator.setBaseFreq(rfFreq);
@@ -302,9 +301,12 @@ int main(int argc, const char** argv) {
             queue_remove_blocking(&keyEventQueue, &ev);
 
             if (ev.scanCode == PS2_SCAN_ESC) {
+                cout << "UNLOCK" << endl;
                 demod.reset();
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_F1) {
+                //demodListener.dumpSamples(cout);
+                //demodListener.clearSamples();
                 activePage = DisplayPage::PAGE_LOGO;
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_F2) {
@@ -346,11 +348,25 @@ int main(int argc, const char** argv) {
                 // Re-enable the receiver
                 adc_run(true);
             } else  if (ev.scanCode == PS2_SCAN_UP) {
-                modulator.setBaseFreq(modulator.getBaseFreq() + 500);
+                modulator.setBaseFreq(modulator.getBaseFreq() + 1000);
                 displayDirty = true;
+                // TEMP
+                //si_evaluate(0, modulator.getBaseFreq() + 600);
             } else  if (ev.scanCode == PS2_SCAN_DOWN) {
-                modulator.setBaseFreq(modulator.getBaseFreq() - 500);
+                modulator.setBaseFreq(modulator.getBaseFreq() - 1000);
                 displayDirty = true;
+                // TEMP
+                //si_evaluate(0, modulator.getBaseFreq() + 600);
+            } else  if (ev.scanCode == PS2_SCAN_PGUP) {
+                modulator.setBaseFreq(modulator.getBaseFreq() + 100);
+                displayDirty = true;
+                // TEMP
+                //si_evaluate(0, modulator.getBaseFreq() + 600);
+            } else  if (ev.scanCode == PS2_SCAN_PGDN) {
+                modulator.setBaseFreq(modulator.getBaseFreq() - 100);
+                displayDirty = true;
+                // TEMP
+                //si_evaluate(0, modulator.getBaseFreq() + 600);
             } else {
                 char a = ev.getAscii();
                 if (a != 0) {
@@ -374,7 +390,7 @@ int main(int argc, const char** argv) {
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
-                    (uint8_t*)"V0.03", 5, 20);
+                    (uint8_t*)"V0.04", 5, 20);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"Copyright (c) 2023", 18, 40);
             } else if (activePage == DisplayPage::PAGE_STATUS) {
@@ -399,7 +415,7 @@ int main(int argc, const char** argv) {
                     (uint8_t*)text, 20, 20);
 
             } else if (activePage == DisplayPage::PAGE_RX) {
-                demodListener.render(display);
+                //demodListener.render(display);
             } else if (activePage == DisplayPage::PAGE_TX) {
                 if (editorState.isClear()) {       
                     display.clearDisplay();

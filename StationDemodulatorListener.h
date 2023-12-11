@@ -36,6 +36,11 @@ public:
     virtual void received(char asciiChar);
     virtual void receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr);
 
+    virtual void sampleMetrics(uint8_t activeSymbol, bool capture, 
+        int32_t lastPLLError,
+        float* symbolCorr, float corrThreshold, float corrDiff,
+        float sample);
+
     /**
      * Returns an indication of whether any data has been received since the 
      * last call.
@@ -44,12 +49,21 @@ public:
 
     void render(HD44780& display) const;
 
+    void setLogWindow(uint32_t logStart, uint32_t logLen) {
+        _logStart = logStart;
+        _logLen = logLen;
+    }
+
 private:
 
     HD44780* _display;
     char _rxSpace[80];
     uint16_t _rxSpaceUsed = 0;
     bool _isDirty = false;
+    uint32_t _sampleCount = 0;
+    bool _logTrigger = false;
+    uint32_t _logStart = 0;
+    uint32_t _logLen = 0;
 };
 
 }
