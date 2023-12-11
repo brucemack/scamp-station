@@ -12,19 +12,19 @@ namespace scamp {
 class Si5351Modulator : public Modulator {
 public:
 
-    Si5351Modulator(ClockInterface& clock,
-        uint32_t markOffset, uint32_t spaceOffset, uint32_t holdMs);
+    Si5351Modulator(ClockInterface& clock, uint32_t markOffset, uint32_t spaceOffset);
     virtual ~Si5351Modulator();
 
     void setBaseFreq(uint32_t freqHz);
     uint32_t getBaseFreq() const { return _baseFreq; };
     void enable(bool on);
+
     void sendCW();
     void sendCQ();
 
-    void sendSilence();
-    void sendMark();
-    void sendSpace();
+    void sendSilence(uint32_t us);
+    void sendMark(uint23_t us);
+    void sendSpace(uint23_t us);
 
 private:
 
@@ -32,7 +32,6 @@ private:
     uint32_t _baseFreq = 0;
     uint32_t _markOffset;
     uint32_t _spaceOffset;
-    uint32_t _holdMs;
     uint32_t _correction = 600;
 };
 

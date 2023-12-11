@@ -9,11 +9,10 @@ using namespace std;
 namespace scamp {
 
 Si5351Modulator::Si5351Modulator(ClockInterface& clock,
-    uint32_t markOffset, uint32_t spaceOffset, uint32_t holdMs)
+    uint32_t markOffset, uint32_t spaceOffset)
 :   _clock(clock),
     _markOffset(markOffset),
-    _spaceOffset(spaceOffset),
-    _holdMs(holdMs) {
+    _spaceOffset(spaceOffset) {
 }
 
 Si5351Modulator::~Si5351Modulator() {    
@@ -35,20 +34,19 @@ void Si5351Modulator::sendCW() {
 void Si5351Modulator::sendCQ() {
 }
 
-void Si5351Modulator::sendSilence() {
-    _clock.sleepMs(_holdMs);
+void Si5351Modulator::sendSilence(uint32_t us) {
+    _clock.sleepUs(us);
 }
 
-void Si5351Modulator::sendMark() {
+void Si5351Modulator::sendMark(uint32_t us) {
     si_evaluate(0, _baseFreq + _markOffset + _correction);
-    _clock.sleepMs(_holdMs);
+    _clock.sleepUs(us);
 }
 
-void Si5351Modulator::sendSpace() {
+void Si5351Modulator::sendSpace(uint32_t us) {
     si_evaluate(0, _baseFreq + _spaceOffset + _correction);
-    _clock.sleepMs(_holdMs);
+    _clock.sleepUs(us);
 }
 
 }
-
 

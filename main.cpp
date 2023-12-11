@@ -49,6 +49,7 @@ static const uint16_t sampleFreq = 2000;
 static const uint32_t adcClockHz = 48000000;
 static const uint16_t lowFreq = 100;
 static const unsigned int samplesPerSymbol = 60;
+static const unsigned int usPerSymbol = (1000000 / sampleFreq) * samplesPerSymbol;
 static const unsigned int markFreq = 667;
 static const unsigned int spaceFreq = 600;
 static const uint32_t rfFreq = 7042000;
@@ -259,8 +260,7 @@ int main(int argc, const char** argv) {
     si_enable(0, false);
     // RECEIVE TEST
     //si_enable(0, true);
-    Si5351Modulator modulator(clk, markFreq, spaceFreq, 
-        (1000 * samplesPerSymbol) / sampleFreq);
+    Si5351Modulator modulator(clk, markFreq, spaceFreq);
     modulator.setBaseFreq(rfFreq);
     cout << "Initialized Si5351" << endl;
 
@@ -331,7 +331,7 @@ int main(int argc, const char** argv) {
                     si_enable(0, true);
                     Frame30 frames[48];
                     uint16_t framesSent = modulateMessage(editorSpace, 
-                        modulator, frames, 48);
+                        modulator, usPerSymbol, frames, 48);
                     // Radio off
                     si_enable(0, false);
                     editorState.clear();
