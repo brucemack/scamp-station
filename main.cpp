@@ -173,13 +173,17 @@ static void fmtFreq(Si5351Modulator& mod, char* buffer) {
 /**
  * Enter TX mode
 */
-static void enter_tx_mode() {
+static void enter_tx_mode(ClockInterface& clock) {
     if (stationMode != StationMode::TX_MODE) {    
         // Turn off the ADC since the data is about to become
         // unusable
         adc_run(false);
-        // Phase 0 TR switch
-        gpio_put(TR_PHASE_1_PIN, 1);
+        // Phase 0 TR switch controls the main TR relay.  We do this first
+        // to make sure that the PA is connected to the external load before
+        // we power-up the tx.
+        gpio_put(TR_PHASE_0_PIN, 1);
+        // Make sure the relay is settled
+        clock.sleepMs(10);
         // Phase 1 TR switch
         gpio_put(TR_PHASE_1_PIN, 0);
 
@@ -192,7 +196,7 @@ static void enter_rx_mode() {
         // Phase 1 TR switch
         gpio_put(TR_PHASE_1_PIN, 1);
         // Phase 0 TR switch
-        gpio_put(TR_PHASE_1_PIN, 0);
+        gpio_put(TR_PHASE_0_PIN, 0);
         // Turn off the ADC back on
         adc_run(true);
 
@@ -378,7 +382,7 @@ int main(int argc, const char** argv) {
                     display.writeLinear(HD44780::Format::FMT_20x4, 
                         (const uint8_t*)"Sending ...", 11, 0);
                     // Switch modes
-                    enter_tx_mode();
+                    enter_tx_mode(clk);
                     // Radio on
                     modulator.enable(true);
                     // The actual data sending
@@ -395,7 +399,7 @@ int main(int argc, const char** argv) {
                 }
             } else if (ev.scanCode == PS2_SCAN_F12) {
                 // Switch modes
-                enter_tx_mode();
+                enter_tx_mode(clk);
                 // Transmission
                 modulator.enable(true);
                 modulator.sendCW();
