@@ -9,6 +9,14 @@
 
 namespace scamp {
 
+/**
+ * IMPORTANT NOTES ON TX BEHAVIOR:
+ * 
+ * 1. When a sendMark() or sendSpace() is complete the transmitor is
+ *    left in the transmitting state.
+ * 2. Transition from mark->space or space->mark is done as smoothly
+ *    as possible (i.e. phase coherent)
+*/
 class Si5351Modulator : public Modulator {
 public:
 

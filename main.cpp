@@ -31,16 +31,27 @@
 #include "Si5351Modulator.h"
 #include "EditorState.h"
 
-#define LED_PIN (25)
-
-#define I2C0_SDA 4      // Pin 6: I2C channel 0 - data
-#define I2C0_SCL 5      // Pin 7: I2C channel 0 - clock
-
-#define I2C1_SDA_PIN 6  // Pin 9  - data
-#define I2C1_SCL_PIN 7  // Pin 10 - clock
-
-#define KBD_DATA_PIN (2)
+#define KBD_DATA_PIN  (2)
 #define KBD_CLOCK_PIN (3)
+#define I2C0_SDA_PIN  (4)      // Pin 6: I2C channel 0 - data
+#define I2C0_SCL_PIN  (5)      // Pin 7: I2C channel 0 - clock
+#define I2C1_SDA_PIN  (6)      // Pin 9  - SI5351 data
+#define I2C1_SCL_PIN  (7)      // Pin 10 - SI5351 clock
+ 
+// This is an active high signal that deals with the heavy
+// TR relay movements. 
+//
+// IMPORTANT: It is essential that the antenna load be attached
+// to the PA output BEFORE we transmit any power to avoid blowing
+// the finals during hot-switching transients.
+//
+#define TR_PHASE_0_PIN (8)
+
+// This is an active low signal that deals with the "normal" TR
+// switching.
+#define TR_PHASE_1_PIN (9)
+
+#define LED_PIN (25)
 
 using namespace std;
 using namespace scamp;
@@ -68,6 +79,14 @@ static Demodulator demod(sampleFreq, lowFreq, log2fftN,
 
 // Diagnostic area
 static TestDemodulatorListener::Sample samples[2000];
+
+enum StationMode { IDLE_MODE, RX_MODE, TX_MODE };
+
+static StationMode stationMode = StationMode::IDLE_MODE;
+
+static uint32_t maxUs = 0;
+
+enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
 
 // ----- KEYBOARD RELATED -------------------------------------------------
 
@@ -151,9 +170,35 @@ static void fmtFreq(Si5351Modulator& mod, char* buffer) {
     buffer[8] = 32;
 }
 
-static uint32_t maxUs = 0;
+/**
+ * Enter TX mode
+*/
+static void enter_tx_mode() {
+    if (stationMode != StationMode::TX_MODE) {    
+        // Turn off the ADC since the data is about to become
+        // unusable
+        adc_run(false);
+        // Phase 0 TR switch
+        gpio_put(TR_PHASE_1_PIN, 1);
+        // Phase 1 TR switch
+        gpio_put(TR_PHASE_1_PIN, 0);
 
-enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
+        stationMode = StationMode::TX_MODE;
+    }
+}
+
+static void enter_rx_mode() {
+    if (stationMode != StationMode::RX_MODE) {        
+        // Phase 1 TR switch
+        gpio_put(TR_PHASE_1_PIN, 1);
+        // Phase 0 TR switch
+        gpio_put(TR_PHASE_1_PIN, 0);
+        // Turn off the ADC back on
+        adc_run(true);
+
+        stationMode = StationMode::RX_MODE;
+    }
+}
 
 int main(int argc, const char** argv) {
 
@@ -181,7 +226,17 @@ int main(int argc, const char** argv) {
     gpio_set_dir(KBD_DATA_PIN, GPIO_IN);   
     gpio_init(KBD_CLOCK_PIN);
     gpio_set_dir(KBD_CLOCK_PIN, GPIO_IN);
-    
+
+    // TR switch setup
+    gpio_init(TR_PHASE_1_PIN);
+    gpio_set_dir(TR_PHASE_1_PIN, GPIO_OUT);   
+    gpio_put(TR_PHASE_1_PIN, 1);
+    gpio_init(TR_PHASE_0_PIN);
+    gpio_set_dir(TR_PHASE_0_PIN, GPIO_OUT);   
+    gpio_put(TR_PHASE_0_PIN, 0);
+
+    stationMode = StationMode::RX_MODE;
+
     gpio_put(LED_PIN, 1);
     sleep_ms(1000);
     gpio_put(LED_PIN, 0);
@@ -255,11 +310,8 @@ int main(int argc, const char** argv) {
     demod.setListener(&demodListener);
 
     // SI5351 setup
-    cout << "Initializing Si5351 ..." << endl;
     si_init(i2c1);
     si_enable(0, false);
-    // RECEIVE TEST
-    //si_enable(0, true);
     Si5351Modulator modulator(clk, markFreq, spaceFreq);
     modulator.setBaseFreq(rfFreq);
     cout << "Initialized Si5351" << endl;
@@ -325,28 +377,31 @@ int main(int argc, const char** argv) {
                     display.clearDisplay();
                     display.writeLinear(HD44780::Format::FMT_20x4, 
                         (const uint8_t*)"Sending ...", 11, 0);
-                    // Disable the receiver
-                    adc_run(false);
+                    // Switch modes
+                    enter_tx_mode();
                     // Radio on
-                    si_enable(0, true);
+                    modulator.enable(true);
+                    // The actual data sending
                     Frame30 frames[48];
                     uint16_t framesSent = modulateMessage(editorSpace, 
                         modulator, usPerSymbol, frames, 48);
                     // Radio off
-                    si_enable(0, false);
+                    modulator.enable(false);
+                    // Switch modes
+                    enter_rx_mode();
+                    // Display
                     editorState.clear();
-                    // Re-enable the receiver
-                    adc_run(true);
                     displayDirty = true;
                 }
             } else if (ev.scanCode == PS2_SCAN_F12) {
-                // Disable the receiver
-                adc_run(false);
-                si_enable(0, true);
+                // Switch modes
+                enter_tx_mode();
+                // Transmission
+                modulator.enable(true);
                 modulator.sendCW();
-                si_enable(0, false);
-                // Re-enable the receiver
-                adc_run(true);
+                modulator.enable(false);
+                // Switch modes
+                enter_rx_mode();
             } else  if (ev.scanCode == PS2_SCAN_UP) {
                 modulator.setBaseFreq(modulator.getBaseFreq() + 1000);
                 displayDirty = true;
