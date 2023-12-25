@@ -515,20 +515,7 @@ static void dash(Modulator& mod, uint16_t speed, bool last = false) {
         silence(mod, 1, speed);
 }
 
-void send_morse(const char* s, Modulator& mod, uint16_t speed) {
-    uint16_t i = 0;
-    for (i = 0; s[i] != 0; i++) {
-        if (s[i] == ' ') {
-            // NOTE: WE ALREADY SENT 3 AFTER LAST CHAR
-            silemce(mod, 4, speed);
-        } else {
-            send_morse_char(s[i], mod, speed);
-            silemce(mod, 3, speed);
-        }
-    }
-}
-
-void send_morse_char(char c, Modulator& mod, uint16_t speed) {
+void send_morse_char(char ch, Modulator& mod, uint16_t speed) {
 
     switch (ch) 
     {
@@ -604,8 +591,8 @@ void send_morse_char(char c, Modulator& mod, uint16_t speed) {
             break;
         case 'O': 
             dash(mod, speed);
-            dash(modv, speed);
-            dash(modv, speed, true);
+            dash(mod, speed);
+            dash(mod, speed, true);
             break;
         case 'P': 
             dot(mod, speed);
@@ -738,3 +725,19 @@ void send_morse_char(char c, Modulator& mod, uint16_t speed) {
             break;
     }
 }
+
+
+void send_morse(const char* s, Modulator& mod, uint16_t speed) {
+    uint16_t i = 0;
+    for (i = 0; s[i] != 0; i++) {
+        if (s[i] == ' ') {
+            // NOTE: WE ALREADY SENT 3 AFTER LAST CHAR
+            silence(mod, 4, speed);
+        } else {
+            send_morse_char(s[i], mod, speed);
+            silence(mod, 3, speed);
+        }
+    }
+}
+
+
