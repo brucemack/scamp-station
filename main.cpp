@@ -493,3 +493,248 @@ int main(int argc, const char** argv) {
 
     return 0;
 }
+
+// WILL MOVE
+
+static void silence(Modulator& mod, uint16_t dots, uint16_t speed) {
+    uint16_t dot_ms = 100;
+    mod.sendSilence(dots * dot_ms);
+}
+
+static void dot(Modulator& mod, uint16_t speed, bool last = false) {
+    uint16_t dot_ms = 100;
+    mod.sendMark(dot_ms * 1000);
+    if (!last)
+        silence(mod, 1, speed);
+}
+
+static void dash(Modulator& mod, uint16_t speed, bool last = false) {
+    uint16_t dot_ms = 100;
+    mod.sendMark(3 * dot_ms * 1000);
+    if (!last)
+        silence(mod, 1, speed);
+}
+
+void send_morse(const char* s, Modulator& mod, uint16_t speed) {
+    uint16_t i = 0;
+    for (i = 0; s[i] != 0; i++) {
+        if (s[i] == ' ') {
+            // NOTE: WE ALREADY SENT 3 AFTER LAST CHAR
+            silemce(mod, 4, speed);
+        } else {
+            send_morse_char(s[i], mod, speed);
+            silemce(mod, 3, speed);
+        }
+    }
+}
+
+void send_morse_char(char c, Modulator& mod, uint16_t speed) {
+
+    switch (ch) 
+    {
+        case 'A': 
+            dot(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'B': 
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'C': 
+            dash(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'D': 
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'E': 
+            dot(mod, speed, true);
+            break;
+        case 'F': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'G': 
+            dash(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'H': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'I': 
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'J': 
+            dot(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'K': 
+            dash(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'L': 
+            dot(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'M': 
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'N': 
+            dash(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'O': 
+            dash(mod, speed);
+            dash(modv, speed);
+            dash(modv, speed, true);
+            break;
+        case 'P': 
+            dot(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'Q': 
+            dash(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'R': 
+            dot(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'S': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case 'T': 
+            dash(mod, speed, true);
+            break;
+        case 'U': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'V': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'W': 
+            dot(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'X': 
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'Y': 
+            dash(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case 'Z': 
+            dash(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case '1': 
+            dot(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case '2': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case '3': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case '4': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dash(mod, speed, true);
+            break;
+        case '5': 
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case '6': 
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case '7': 
+            dash(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case '8': 
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case '9': 
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dot(mod, speed, true);
+            break;
+        case '0': 
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed);
+            dash(mod, speed, true);
+            break;
+    }
+}
