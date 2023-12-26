@@ -36,18 +36,18 @@ void Si5351Modulator::sendCQ() {
 
 void Si5351Modulator::sendSilence(uint32_t us) {
     si_enable(0, false);
-    _clock.sleepUs(us);
+    _clock.sleepMs(us / 1000);
     si_enable(0, true);
 }
 
 void Si5351Modulator::sendMark(uint32_t us) {
     si_evaluate(0, _baseFreq + _markOffset + _correction);
-    _clock.sleepUs(us);
+    _clock.sleepMs(us / 1000);
 }
 
 void Si5351Modulator::sendSpace(uint32_t us) {
     si_evaluate(0, _baseFreq + _spaceOffset + _correction);
-    _clock.sleepUs(us);
+    _clock.sleepMs(us / 1000);
 }
 
 }

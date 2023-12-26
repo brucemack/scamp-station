@@ -35,8 +35,8 @@
 #define KBD_CLOCK_PIN (3)
 #define I2C0_SDA_PIN  (4)      // Pin 6: I2C channel 0 - data
 #define I2C0_SCL_PIN  (5)      // Pin 7: I2C channel 0 - clock
-#define I2C1_SDA_PIN  (6)      // Pin 9  - SI5351 data
-#define I2C1_SCL_PIN  (7)      // Pin 10 - SI5351 clock
+#define I2C1_SDA_PIN  (6)      // Pin 9  - SI5351 data, yellow
+#define I2C1_SCL_PIN  (7)      // Pin 10 - SI5351 clock, green
  
 // This is an active high signal that deals with the heavy
 // TR relay movements. 
@@ -55,6 +55,12 @@
 
 using namespace std;
 using namespace scamp;
+
+/**
+ * @param msg Must be null-terminated!
+ * @param speed In WPM (assuming PARIS convention)
+ */
+void send_morse(const char* msg, Modulator& mod, uint16_t speed);
 
 static const uint16_t sampleFreq = 2000;
 static const uint32_t adcClockHz = 48000000;
@@ -397,6 +403,19 @@ int main(int argc, const char** argv) {
                     editorState.clear();
                     displayDirty = true;
                 }
+            } else if (ev.scanCode == PS2_SCAN_F11) {
+                // Switch modes
+                enter_tx_mode(clk);
+                // Transmission
+                modulator.enable(true);
+                send_morse("CQCQ DE KC1FSZ DE KC1FSZ", modulator, 15);
+                //send_morse("D", modulator, 15);
+                modulator.enable(false);
+                // Switch modes
+                enter_rx_mode();
+                // TEMP
+                si_enable(0, false);
+
             } else if (ev.scanCode == PS2_SCAN_F12) {
                 // Switch modes
                 enter_tx_mode(clk);
@@ -497,20 +516,23 @@ int main(int argc, const char** argv) {
 // WILL MOVE
 
 static void silence(Modulator& mod, uint16_t dots, uint16_t speed) {
-    uint16_t dot_ms = 100;
-    mod.sendSilence(dots * dot_ms);
+    uint32_t dot_ms = 60;
+    uint32_t t = (uint32_t)dots * dot_ms * 1000;
+    mod.sendSilence(t);
 }
 
 static void dot(Modulator& mod, uint16_t speed, bool last = false) {
-    uint16_t dot_ms = 100;
-    mod.sendMark(dot_ms * 1000);
+    uint32_t dot_ms = 60;
+    uint32_t t = dot_ms * 1000;
+    mod.sendMark(t);
     if (!last)
         silence(mod, 1, speed);
 }
 
 static void dash(Modulator& mod, uint16_t speed, bool last = false) {
-    uint16_t dot_ms = 100;
-    mod.sendMark(3 * dot_ms * 1000);
+    uint32_t dot_ms = 60;
+    uint32_t t = 3L * dot_ms * 1000;
+    mod.sendMark(t);
     if (!last)
         silence(mod, 1, speed);
 }
@@ -726,8 +748,8 @@ void send_morse_char(char ch, Modulator& mod, uint16_t speed) {
     }
 }
 
-
 void send_morse(const char* s, Modulator& mod, uint16_t speed) {
+    cout << "Morse message: " << s << endl;
     uint16_t i = 0;
     for (i = 0; s[i] != 0; i++) {
         if (s[i] == ' ') {
@@ -738,6 +760,7 @@ void send_morse(const char* s, Modulator& mod, uint16_t speed) {
             silence(mod, 3, speed);
         }
     }
+    cout << "DONE" << endl;
 }
 
 
