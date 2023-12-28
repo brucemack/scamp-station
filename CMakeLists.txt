@@ -10,14 +10,18 @@ pico_sdk_init()
 add_executable(main
   main.cpp 
   StationDemodulatorListener.cpp
+  Si5351FSKModulator.cpp
   Si5351Modulator.cpp
   EditorState.cpp
+  radlib/util/WindowAverage.cpp
   radlib/lcd/HD44780.cpp 
   radlib/lcd/HD44780_PCF8574.cpp 
-  radlib/tests/TestI2CInterface.cpp 
-  radlib/tests/TestClockInterface.cpp
   radlib/hw/pico/PICOI2CInterface.cpp 
   radlib/hw/pico/PICOClockInterface.cpp
+  radlib/rtty/BaudotEncoder.cpp
+  radlib/rtty/BaudotDecoder.cpp
+  radlib/tests/TestI2CInterface.cpp 
+  radlib/tests/TestClockInterface.cpp
   hello-ps2keyboard/PS2Keyboard.cpp
   hello-scamp/fixed_math.cpp
   hello-scamp/fixed_fft.cpp

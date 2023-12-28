@@ -10,6 +10,7 @@
 #include "pico/util/queue.h"
 #endif
 
+#include "radlib/rtty/BaudotEncoder.h"
 #include "radlib/lcd/HD44780_PCF8574.h"
 #include "radlib/tests/TestI2CInterface.h"
 #include "radlib/tests/TestClockInterface.h"
@@ -29,6 +30,7 @@
 
 #include "StationDemodulatorListener.h"
 #include "Si5351Modulator.h"
+#include "Si5351FSKModulator.h"
 #include "EditorState.h"
 
 #define KBD_DATA_PIN  (2)
@@ -322,10 +324,15 @@ int main(int argc, const char** argv) {
 
     // SI5351 setup
     si_init(i2c1);
+    cout << "Initialized Si5351" << endl;
+
     si_enable(0, false);
+
     Si5351Modulator modulator(clk, markFreq, spaceFreq);
     modulator.setBaseFreq(rfFreq);
-    cout << "Initialized Si5351" << endl;
+
+    Si5351FSKModulator fskMod(clk, markFreq, markFreq - 170);
+    fskMod.setBaseFreq(rfFreq);
 
     // Here we can inject a tuning error to show that the demodulator will
     // still find the signal.
@@ -404,13 +411,24 @@ int main(int argc, const char** argv) {
                     editorState.clear();
                     displayDirty = true;
                 }
+            } else if (ev.scanCode == PS2_SCAN_F10) {
+                // Switch modes
+                enter_tx_mode(clk);
+                // Transmission
+                fskMod.enable(true);
+                transmitBaudot("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ K", fskMod, 22002);
+                fskMod.enable(false);
+                // Switch modes
+                enter_rx_mode();
+                // TEMP
+                si_enable(0, false);
+
             } else if (ev.scanCode == PS2_SCAN_F11) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
                 modulator.enable(true);
-                send_morse("CQCQ DE KC1FSZ KC1FSZ KC1FSZ", modulator, 15);
-                //send_morse("D", modulator, 15);
+                send_morse("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", modulator, 15);
                 modulator.enable(false);
                 // Switch modes
                 enter_rx_mode();
@@ -469,7 +487,7 @@ int main(int argc, const char** argv) {
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
-                    (uint8_t*)"V0.04", 5, 20);
+                    (uint8_t*)"V0.05", 5, 20);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"Copyright (c) 2023", 18, 40);
             } else if (activePage == DisplayPage::PAGE_STATUS) {
