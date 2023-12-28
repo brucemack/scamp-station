@@ -12,11 +12,12 @@ add_executable(main
   StationDemodulatorListener.cpp
   Si5351Modulator.cpp
   EditorState.cpp
-  hello-lcd/HD44780.cpp hello-lcd/HD44780_PCF8574.cpp 
-  hello-lcd/tests/TestI2CInterface.cpp 
-  hello-lcd/tests/TestClockInterface.cpp
-  hello-lcd/pico/PICOI2CInterface.cpp 
-  hello-lcd/pico/PICOClockInterface.cpp
+  radlib/lcd/HD44780.cpp 
+  radlib/lcd/HD44780_PCF8574.cpp 
+  radlib/tests/TestI2CInterface.cpp 
+  radlib/tests/TestClockInterface.cpp
+  radlib/hw/pico/PICOI2CInterface.cpp 
+  radlib/hw/pico/PICOClockInterface.cpp
   hello-ps2keyboard/PS2Keyboard.cpp
   hello-scamp/fixed_math.cpp
   hello-scamp/fixed_fft.cpp
@@ -35,6 +36,3 @@ pico_enable_stdio_usb(main 1)
 pico_enable_stdio_uart(main 1)
 target_compile_definitions(main PUBLIC PICO_BUILD=1)
 target_link_libraries(main pico_stdlib hardware_i2c hardware_adc)
-
-
-

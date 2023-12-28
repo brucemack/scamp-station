@@ -10,13 +10,13 @@
 #include "pico/util/queue.h"
 #endif
 
-#include "hello-lcd/HD44780_PCF8574.h"
-#include "hello-lcd/tests/TestI2CInterface.h"
-#include "hello-lcd/tests/TestClockInterface.h"
+#include "radlib/lcd/HD44780_PCF8574.h"
+#include "radlib/tests/TestI2CInterface.h"
+#include "radlib/tests/TestClockInterface.h"
 
 #ifdef PICO_BUILD
-#include "hello-lcd/pico/PICOI2CInterface.h"
-#include "hello-lcd/pico/PICOClockInterface.h"
+#include "radlib/hw/pico/PICOI2CInterface.h"
+#include "radlib/hw/pico/PICOClockInterface.h"
 #include "hello-ps2keyboard/PS2Keyboard.h"
 #endif
 
@@ -54,6 +54,7 @@
 #define LED_PIN (25)
 
 using namespace std;
+using namespace radlib;
 using namespace scamp;
 
 /**
@@ -408,7 +409,7 @@ int main(int argc, const char** argv) {
                 enter_tx_mode(clk);
                 // Transmission
                 modulator.enable(true);
-                send_morse("CQCQ DE KC1FSZ DE KC1FSZ", modulator, 15);
+                send_morse("CQCQ DE KC1FSZ KC1FSZ KC1FSZ", modulator, 15);
                 //send_morse("D", modulator, 15);
                 modulator.enable(false);
                 // Switch modes
@@ -516,13 +517,13 @@ int main(int argc, const char** argv) {
 // WILL MOVE
 
 static void silence(Modulator& mod, uint16_t dots, uint16_t speed) {
-    uint32_t dot_ms = 60;
+    uint32_t dot_ms = 80;
     uint32_t t = (uint32_t)dots * dot_ms * 1000;
     mod.sendSilence(t);
 }
 
 static void dot(Modulator& mod, uint16_t speed, bool last = false) {
-    uint32_t dot_ms = 60;
+    uint32_t dot_ms = 80;
     uint32_t t = dot_ms * 1000;
     mod.sendMark(t);
     if (!last)
@@ -530,7 +531,7 @@ static void dot(Modulator& mod, uint16_t speed, bool last = false) {
 }
 
 static void dash(Modulator& mod, uint16_t speed, bool last = false) {
-    uint32_t dot_ms = 60;
+    uint32_t dot_ms = 80;
     uint32_t t = 3L * dot_ms * 1000;
     mod.sendMark(t);
     if (!last)

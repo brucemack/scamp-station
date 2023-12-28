@@ -20,7 +20,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include <cstdint>
 #include <sstream>
 
-#include "hello-lcd/HD44780.h"
+#include "radlib/lcd/HD44780.h"
 #include "hello-scamp/DemodulatorListener.h"
 
 namespace scamp {
@@ -28,7 +28,7 @@ namespace scamp {
 class StationDemodulatorListener : public DemodulatorListener {
 public:
 
-    StationDemodulatorListener(HD44780* display);
+    StationDemodulatorListener(radlib::HD44780* display);
 
     virtual void frequencyLocked(uint16_t markFreq, uint16_t spaceFreq);
     virtual void dataSyncAcquired();
@@ -47,7 +47,7 @@ public:
      */
     bool isDirty();
 
-    void render(HD44780& display) const;
+    void render(radlib::HD44780& display) const;
 
     void setLogWindow(uint32_t logStart, uint32_t logLen) {
         _logStart = logStart;
@@ -56,7 +56,7 @@ public:
 
 private:
 
-    HD44780* _display;
+    radlib::HD44780* _display;
     char _rxSpace[80];
     uint16_t _rxSpaceUsed = 0;
     bool _isDirty = false;

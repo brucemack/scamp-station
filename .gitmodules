@@ -1,6 +1,3 @@
-[submodule "hello-lcd"]
-	path = hello-lcd
-	url = https://github.com/brucemack/hello-lcd.git
 [submodule "hello-ps2keyboard"]
 	path = hello-ps2keyboard
 	url = https://github.com/brucemack/hello-ps2keyboard.git
@@ -10,3 +7,6 @@
 [submodule "hello-pico-si5351"]
 	path = hello-pico-si5351
 	url = https://github.com/brucemack/hello-pico-si5351.git
+[submodule "radlib"]
+	path = radlib
+	url = https://github.com/brucemack/radlib.git
