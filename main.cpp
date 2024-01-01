@@ -40,7 +40,7 @@
 #define I2C1_SDA_PIN  (6)      // Pin 9  - SI5351 data, yellow
 #define I2C1_SCL_PIN  (7)      // Pin 10 - SI5351 clock, green
  
-// This is an active high signal that deals with the heavy
+// This is an active low signal that deals with the heavy
 // TR relay movements. 
 //
 // IMPORTANT: It is essential that the antenna load be attached
@@ -49,7 +49,7 @@
 //
 #define TR_PHASE_0_PIN (8)
 
-// This is an active low signal that deals with the "normal" TR
+// This is an active high signal that deals with the "normal" TR
 // switching.
 #define TR_PHASE_1_PIN (9)
 
@@ -72,7 +72,7 @@ static const unsigned int samplesPerSymbol = 60;
 static const unsigned int usPerSymbol = (1000000 / sampleFreq) * samplesPerSymbol;
 static const unsigned int markFreq = 667;
 static const unsigned int spaceFreq = 600;
-static const uint32_t rfFreq = 7042000;
+static const uint32_t rfFreq = 7035000;
 
 // The size of the FFT used for frequency acquisition
 static const uint16_t log2fftN = 9;
@@ -190,11 +190,11 @@ static void enter_tx_mode(ClockInterface& clock) {
         // Phase 0 TR switch controls the main TR relay.  We do this first
         // to make sure that the PA is connected to the external load before
         // we power-up the tx.
-        gpio_put(TR_PHASE_0_PIN, 1);
+        gpio_put(TR_PHASE_0_PIN, 0);
         // Make sure the relay is settled
         clock.sleepMs(10);
-        // Phase 1 TR switch
-        gpio_put(TR_PHASE_1_PIN, 0);
+        // Phase 1 TR switch.  Active high.
+        gpio_put(TR_PHASE_1_PIN, 1);
 
         stationMode = StationMode::TX_MODE;
     }
@@ -203,9 +203,9 @@ static void enter_tx_mode(ClockInterface& clock) {
 static void enter_rx_mode() {
     if (stationMode != StationMode::RX_MODE) {        
         // Phase 1 TR switch
-        gpio_put(TR_PHASE_1_PIN, 1);
+        gpio_put(TR_PHASE_1_PIN, 0);
         // Phase 0 TR switch
-        gpio_put(TR_PHASE_0_PIN, 0);
+        gpio_put(TR_PHASE_0_PIN, 1);
         // Turn off the ADC back on
         adc_run(true);
 
@@ -240,13 +240,15 @@ int main(int argc, const char** argv) {
     gpio_init(KBD_CLOCK_PIN);
     gpio_set_dir(KBD_CLOCK_PIN, GPIO_IN);
 
-    // TR switch setup
+    // TR switch setup (active high -> TX mode)
     gpio_init(TR_PHASE_1_PIN);
     gpio_set_dir(TR_PHASE_1_PIN, GPIO_OUT);   
-    gpio_put(TR_PHASE_1_PIN, 1);
+    gpio_put(TR_PHASE_1_PIN, 0);
+
+    // TR switch setup (active low -> TX mode)
     gpio_init(TR_PHASE_0_PIN);
     gpio_set_dir(TR_PHASE_0_PIN, GPIO_OUT);   
-    gpio_put(TR_PHASE_0_PIN, 0);
+    gpio_put(TR_PHASE_0_PIN, 1);
 
     stationMode = StationMode::RX_MODE;
 
@@ -411,7 +413,39 @@ int main(int argc, const char** argv) {
                     editorState.clear();
                     displayDirty = true;
                 }
-            } else if (ev.scanCode == PS2_SCAN_F10) {
+            } 
+            else if (ev.scanCode == PS2_SCAN_F7) {
+                // Phase 0 TR switch controls the main TR relay.  We do this first
+                // to make sure that the PA is connected to the external load before
+                // we power-up the tx.
+                gpio_put(TR_PHASE_0_PIN, 0);
+                sleep_ms(2000);
+                gpio_put(TR_PHASE_0_PIN, 1);
+            }
+            else if (ev.scanCode == PS2_SCAN_F8) {
+                gpio_put(TR_PHASE_1_PIN, 1);
+                sleep_ms(2000);
+                gpio_put(TR_PHASE_1_PIN, 0);
+            }
+            // SCAMP
+            else if (ev.scanCode == PS2_SCAN_F9) {
+                // Switch modes
+                enter_tx_mode(clk);
+                // Transmission
+                fskMod.enable(true);
+                // The actual data sending
+                Frame30 frames[48];
+                modulateMessage("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ K",
+                        modulator, usPerSymbol, frames, 48);
+                fskMod.enable(false);
+                // Switch modes
+                enter_rx_mode();
+                // TEMP
+                si_enable(0, false);
+
+            } 
+            // RTTY
+            else if (ev.scanCode == PS2_SCAN_F10) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
@@ -423,19 +457,22 @@ int main(int argc, const char** argv) {
                 // TEMP
                 si_enable(0, false);
 
-            } else if (ev.scanCode == PS2_SCAN_F11) {
+            } 
+            // CW
+            else if (ev.scanCode == PS2_SCAN_F11) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
                 modulator.enable(true);
-                send_morse("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", modulator, 15);
+                send_morse("CQ CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", modulator, 15);
                 modulator.enable(false);
                 // Switch modes
                 enter_rx_mode();
                 // TEMP
                 si_enable(0, false);
-
-            } else if (ev.scanCode == PS2_SCAN_F12) {
+            } 
+            // Test tone
+            else if (ev.scanCode == PS2_SCAN_F12) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
@@ -535,13 +572,13 @@ int main(int argc, const char** argv) {
 // WILL MOVE
 
 static void silence(Modulator& mod, uint16_t dots, uint16_t speed) {
-    uint32_t dot_ms = 80;
+    uint32_t dot_ms = 50;
     uint32_t t = (uint32_t)dots * dot_ms * 1000;
     mod.sendSilence(t);
 }
 
 static void dot(Modulator& mod, uint16_t speed, bool last = false) {
-    uint32_t dot_ms = 80;
+    uint32_t dot_ms = 50;
     uint32_t t = dot_ms * 1000;
     mod.sendMark(t);
     if (!last)
@@ -549,7 +586,7 @@ static void dot(Modulator& mod, uint16_t speed, bool last = false) {
 }
 
 static void dash(Modulator& mod, uint16_t speed, bool last = false) {
-    uint32_t dot_ms = 80;
+    uint32_t dot_ms = 50;
     uint32_t t = 3L * dot_ms * 1000;
     mod.sendMark(t);
     if (!last)
