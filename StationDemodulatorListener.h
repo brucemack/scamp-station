@@ -20,7 +20,11 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include <cstdint>
 #include <sstream>
 
-#include "radlib/lcd/HD44780.h"
+#ifdef PICO_BUILD
+#include "pico/stdlib.h"
+#include "pico/util/queue.h"
+#endif
+
 #include "hello-scamp/DemodulatorListener.h"
 
 namespace scamp {
@@ -28,7 +32,7 @@ namespace scamp {
 class StationDemodulatorListener : public DemodulatorListener {
 public:
 
-    StationDemodulatorListener(radlib::HD44780* display);
+    StationDemodulatorListener(queue_t* rxQueue);
 
     virtual void frequencyLocked(uint16_t markFreq, uint16_t spaceFreq);
     virtual void dataSyncAcquired();
@@ -41,29 +45,13 @@ public:
         float* symbolCorr, float corrThreshold, float corrDiff,
         float sample);
 
-    /**
-     * Returns an indication of whether any data has been received since the 
-     * last call.
-     */
-    bool isDirty();
-
-    void render(radlib::HD44780& display) const;
-
-    void setLogWindow(uint32_t logStart, uint32_t logLen) {
-        _logStart = logStart;
-        _logLen = logLen;
-    }
-
 private:
 
-    radlib::HD44780* _display;
-    char _rxSpace[80];
-    uint16_t _rxSpaceUsed = 0;
-    bool _isDirty = false;
-    uint32_t _sampleCount = 0;
-    bool _logTrigger = false;
-    uint32_t _logStart = 0;
-    uint32_t _logLen = 0;
+    queue_t* _rxQueue;
+
+    bool _locked;
+    uint16_t _lockedMarkFreq;
+    uint16_t _lockedSpaceFreq;
 };
 
 }

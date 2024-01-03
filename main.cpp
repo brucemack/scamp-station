@@ -8,13 +8,14 @@
 #include "hardware/adc.h"
 #include "hardware/sync.h"
 #include "pico/util/queue.h"
+#include "pico/multicore.h"
 #endif
 
-#include "radlib/util/WindowAverage.h"
 #include "radlib/rtty/BaudotEncoder.h"
 #include "radlib/lcd/HD44780_PCF8574.h"
 #include "radlib/tests/TestI2CInterface.h"
 #include "radlib/tests/TestClockInterface.h"
+#include "radlib/morse/MorseEncoder.h"
 
 #ifdef PICO_BUILD
 #include "radlib/hw/pico/PICOI2CInterface.h"
@@ -23,16 +24,15 @@
 #endif
 
 #include "hello-ps2keyboard/KeyboardListener.h"
-#include "hello-scamp/Demodulator.h"
 #include "hello-scamp/Util.h"
 #include "hello-scamp/Frame30.h"
 #include "hello-scamp/TestDemodulatorListener.h"
 #include "hello-pico-si5351/si5351.h"
 
-#include "StationDemodulatorListener.h"
 #include "Si5351Modulator.h"
 #include "Si5351FSKModulator.h"
 #include "EditorState.h"
+#include "DemodulatorUtil.h"
 
 #define KBD_DATA_PIN  (2)
 #define KBD_CLOCK_PIN (3)
@@ -60,51 +60,21 @@ using namespace std;
 using namespace radlib;
 using namespace scamp;
 
-/**
- * @param msg Must be null-terminated!
- * @param speed In WPM (assuming PARIS convention)
- */
-void send_morse(const char* msg, Modulator& mod, uint16_t speed);
+const uint16_t sampleFreq = 2000;
+const uint16_t lowFreq = 100;
 
-static const uint16_t sampleFreq = 2000;
 static const uint32_t adcClockHz = 48000000;
-static const uint16_t lowFreq = 100;
 static const unsigned int samplesPerSymbol = 60;
 static const unsigned int usPerSymbol = (1000000 / sampleFreq) * samplesPerSymbol;
 static const unsigned int markFreq = 667;
 static const unsigned int spaceFreq = 600;
 static const uint32_t rfFreq = 7035000;
 
-// The size of the FFT used for frequency acquisition
-static const uint16_t log2fftN = 9;
-static const uint16_t fftN = 1 << log2fftN;
-// Space for the demodulator to work in (no dynamic memory allocation!)
-static q15 trigTable[fftN];
-static q15 window[fftN];
-static q15 buffer[fftN];
-static cq15 fftResult[fftN];
-// The demodulator 
-static Demodulator demod(sampleFreq, lowFreq, log2fftN,
-    trigTable, window, fftResult, buffer);
-
-// Diagnostic area
-static TestDemodulatorListener::Sample samples[2000];
-
 enum StationMode { IDLE_MODE, RX_MODE, TX_MODE };
 
 static StationMode stationMode = StationMode::IDLE_MODE;
 
-static uint32_t maxUs = 0;
-
 enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
-
-// Center adjustment for the ADC
-int16_t adcCenterAdjust = -40;
-
-// An area used for analysis of ADC samples
-static int16_t adcStatArea[32];
-static const int16_t adcStatAreaSizeLog2 = 5;
-static WindowAverage adcStatSamples(adcStatAreaSizeLog2, adcStatArea);
 
 // ----- KEYBOARD RELATED -------------------------------------------------
 
@@ -120,7 +90,7 @@ struct KeyEvent {
     }
 };
 
-// This is the queue ussed to pass keyboard activity from the ISR into the main
+// This is the queue used to pass keyboard activity from the ISR into the main
 // event loop
 static queue_t keyEventQueue;
 
@@ -149,7 +119,7 @@ static char upcase(char c) {
 
 // This is the queue used to pass ADC samples from the ISR and into the main 
 // event loop.
-static queue_t adcSampleQueue;
+queue_t adcSampleQueue;
 
 static uint32_t sampleCount = 0;
 static uint16_t maxAdcSampleQueue = 0;
@@ -171,7 +141,17 @@ static void __not_in_flash_func(adc_irq_handler) () {
 }
 #endif
 
-uint32_t get_us() {
+// ------ DEMODULATOR RELATED -------------------------------------------
+
+// This is the queue used to receive characters back from the 
+// demodulator
+queue_t demodRxQueue;
+// This is the queue used to receive status from the demodulator
+queue_t demodStatusQueue;
+// This is the queue used to send commands to the demodulator
+queue_t demodCommandQueue;
+
+static uint32_t get_us() {
     absolute_time_t at = get_absolute_time();
     return to_us_since_boot(at);
 }
@@ -221,6 +201,7 @@ static void enter_rx_mode() {
         stationMode = StationMode::RX_MODE;
     }
 }
+
 
 int main(int argc, const char** argv) {
 
@@ -293,8 +274,8 @@ int main(int argc, const char** argv) {
     display.returnHome();
     display.setDDRAMAddr(0);
    
+    // ------ ADC SETUP -------------------------------------------------------
 #ifdef PICO_BUILD
-
     // This is the queue used to collect data from the keyboard
     queue_init(&keyEventQueue, sizeof(KeyEvent), 8);
 
@@ -306,7 +287,7 @@ int main(int argc, const char** argv) {
     // is 16 bits (uint16).
     queue_init(&adcSampleQueue, 2, 64);
 
-    // Get the ADC iniialized
+    // Get the ADC initialized
     uint8_t adcChannel = 0;
     adc_gpio_init(26 + adcChannel);
     adc_init();
@@ -326,14 +307,14 @@ int main(int argc, const char** argv) {
 
 #endif
 
-    // Create the demodulator listner
-    //TestDemodulatorListener demodListener(cout, samples, 180);
-    //demodListener.setTriggerMode(TestDemodulatorListener::TriggerMode::ON_LOCK);
-    //demodListener.setTriggerDelay(0);
-    StationDemodulatorListener demodListener(&display);
-    demod.setListener(&demodListener);
+    // ------ DEMODULATION SETUP ----------------------------------------------
+    queue_init(&demodRxQueue, 1, 16);
+    queue_init(&demodCommandQueue, sizeof(DemodulatorCommand), 4);
 
-    // SI5351 setup
+    // Fire off the second thread
+    multicore_launch_core1(main2);
+
+    // ------- SI5351 SETUP ---------------------------------------------------
     si_init(i2c1);
     cout << "Initialized Si5351" << endl;
 
@@ -359,23 +340,12 @@ int main(int argc, const char** argv) {
     // Prevent exit
     while (1) { 
 
-        // Check for ADC activity
-        while (!queue_is_empty(&adcSampleQueue)) {
-            // Pull off ADC queue
-            uint16_t lastSample = 0;
-            queue_remove_blocking(&adcSampleQueue, &lastSample);
-            // Center around zero
-            lastSample -= (2048);
-            lastSample += adcCenterAdjust;
-            // Capture sample for statistical analysis
-            adcStatSamples.sample((int16_t)lastSample);
-            // TODO: REMOVE FLOAT
-            const float lastSampleF32 = lastSample / 2048.0;
-            const q15 lastSampleQ15 = f32_to_q15(lastSampleF32);
-            uint32_t start = get_us();
-            demod.processSample(lastSampleQ15);
-            uint32_t end = get_us();
-            maxUs = std::max(maxUs, (end - start));
+        // Check for RX character activity
+        while (!queue_is_empty(&demodRxQueue)) {
+            char c;
+            queue_remove_blocking(&demodRxQueue, &c);
+            cout << c;
+            cout.flush();
         }
 
         // Check for keyboard activity
@@ -386,11 +356,11 @@ int main(int argc, const char** argv) {
 
             if (ev.scanCode == PS2_SCAN_ESC) {
                 cout << "UNLOCK" << endl;
-                demod.reset();
-                displayDirty = true;
+                // Send a command to the demodulator
+                DemodulatorCommand cmd;
+                cmd.cmd = 1;
+                bool added = queue_try_add(&demodCommandQueue, &cmd);
             } else  if (ev.scanCode == PS2_SCAN_F1) {
-                //demodListener.dumpSamples(cout);
-                //demodListener.clearSamples();
                 activePage = DisplayPage::PAGE_LOGO;
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_F2) {
@@ -403,6 +373,7 @@ int main(int argc, const char** argv) {
                 activePage = DisplayPage::PAGE_RX;
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_F5) {
+                /*
                 cout << "ADC Stats:" << endl;
                 cout << "AVG " << adcStatSamples.getAvg() << endl;
                 cout << "MIN " << adcStatSamples.getMin() << endl;
@@ -411,7 +382,7 @@ int main(int argc, const char** argv) {
                 cout << "|MIN| " << (float)adcStatSamples.getMin() / 2048.0f << endl;
                 cout << "|MAX| " << (float)adcStatSamples.getMax() / 2048.0f << endl;
                 cout << endl;
-
+                */
             } else if (ev.scanCode == PS2_SCAN_ENTER) {
                 int l = strlen(editorSpace);
                 if (l > 0) {
@@ -436,20 +407,7 @@ int main(int argc, const char** argv) {
                     displayDirty = true;
                 }
             } 
-            else if (ev.scanCode == PS2_SCAN_F7) {
-                // Phase 0 TR switch controls the main TR relay.  We do this first
-                // to make sure that the PA is connected to the external load before
-                // we power-up the tx.
-                gpio_put(TR_PHASE_0_PIN, 0);
-                sleep_ms(2000);
-                gpio_put(TR_PHASE_0_PIN, 1);
-            }
-            else if (ev.scanCode == PS2_SCAN_F8) {
-                gpio_put(TR_PHASE_1_PIN, 1);
-                sleep_ms(2000);
-                gpio_put(TR_PHASE_1_PIN, 0);
-            }
-            // SCAMP
+            // SCAMP CQ
             else if (ev.scanCode == PS2_SCAN_F9) {
                 // Switch modes
                 enter_tx_mode(clk);
@@ -464,9 +422,8 @@ int main(int argc, const char** argv) {
                 enter_rx_mode();
                 // TEMP
                 si_enable(0, false);
-
             } 
-            // RTTY
+            // RTTY CQ
             else if (ev.scanCode == PS2_SCAN_F10) {
                 // Switch modes
                 enter_tx_mode(clk);
@@ -480,14 +437,14 @@ int main(int argc, const char** argv) {
                 si_enable(0, false);
 
             } 
-            // CW
+            // CW CQ
             else if (ev.scanCode == PS2_SCAN_F11) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
-                modulator.enable(true);
-                send_morse("CQ CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", modulator, 15);
-                modulator.enable(false);
+                fskMod.enable(true);
+                send_morse("CQ CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", fskMod, 15);
+                fskMod.enable(false);
                 // Switch modes
                 enter_rx_mode();
                 // TEMP
@@ -505,24 +462,20 @@ int main(int argc, const char** argv) {
                 enter_rx_mode();
             } else  if (ev.scanCode == PS2_SCAN_UP) {
                 modulator.setBaseFreq(modulator.getBaseFreq() + 1000);
+                fskMod.setBaseFreq(fskMod.getBaseFreq() + 1000);
                 displayDirty = true;
-                // TEMP
-                //si_evaluate(0, modulator.getBaseFreq() + 600);
             } else  if (ev.scanCode == PS2_SCAN_DOWN) {
                 modulator.setBaseFreq(modulator.getBaseFreq() - 1000);
+                fskMod.setBaseFreq(fskMod.getBaseFreq() - 1000);
                 displayDirty = true;
-                // TEMP
-                //si_evaluate(0, modulator.getBaseFreq() + 600);
             } else  if (ev.scanCode == PS2_SCAN_PGUP) {
                 modulator.setBaseFreq(modulator.getBaseFreq() + 100);
+                fskMod.setBaseFreq(fskMod.getBaseFreq() + 100);
                 displayDirty = true;
-                // TEMP
-                //si_evaluate(0, modulator.getBaseFreq() + 600);
             } else  if (ev.scanCode == PS2_SCAN_PGDN) {
                 modulator.setBaseFreq(modulator.getBaseFreq() - 100);
+                fskMod.setBaseFreq(fskMod.getBaseFreq() - 100);
                 displayDirty = true;
-                // TEMP
-                //si_evaluate(0, modulator.getBaseFreq() + 600);
             } else {
                 char a = ev.getAscii();
                 if (a != 0) {
@@ -562,11 +515,13 @@ int main(int argc, const char** argv) {
                     (uint8_t*)text, 20, 0);
 
                 memset(text, 32, 20);
+                /*
                 if (demod.isFrequencyLocked()) {
                     sprintf(text,"LOCKED %03d", demod.getMarkFreq());
                 } else {
                     sprintf(text,"NOLOCK", demod.getMarkFreq());
                 }
+                */
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)text, 20, 20);
 
@@ -590,255 +545,3 @@ int main(int argc, const char** argv) {
 
     return 0;
 }
-
-// WILL MOVE
-
-static void silence(Modulator& mod, uint16_t dots, uint16_t speed) {
-    uint32_t dot_ms = 50;
-    uint32_t t = (uint32_t)dots * dot_ms * 1000;
-    mod.sendSilence(t);
-}
-
-static void dot(Modulator& mod, uint16_t speed, bool last = false) {
-    uint32_t dot_ms = 50;
-    uint32_t t = dot_ms * 1000;
-    mod.sendMark(t);
-    if (!last)
-        silence(mod, 1, speed);
-}
-
-static void dash(Modulator& mod, uint16_t speed, bool last = false) {
-    uint32_t dot_ms = 50;
-    uint32_t t = 3L * dot_ms * 1000;
-    mod.sendMark(t);
-    if (!last)
-        silence(mod, 1, speed);
-}
-
-void send_morse_char(char ch, Modulator& mod, uint16_t speed) {
-
-    switch (ch) 
-    {
-        case 'A': 
-            dot(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'B': 
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'C': 
-            dash(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'D': 
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'E': 
-            dot(mod, speed, true);
-            break;
-        case 'F': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'G': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'H': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'I': 
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'J': 
-            dot(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'K': 
-            dash(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'L': 
-            dot(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'M': 
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'N': 
-            dash(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'O': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'P': 
-            dot(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'Q': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'R': 
-            dot(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'S': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case 'T': 
-            dash(mod, speed, true);
-            break;
-        case 'U': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'V': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'W': 
-            dot(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'X': 
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'Y': 
-            dash(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case 'Z': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case '1': 
-            dot(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case '2': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case '3': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case '4': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dash(mod, speed, true);
-            break;
-        case '5': 
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case '6': 
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case '7': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case '8': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case '9': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dot(mod, speed, true);
-            break;
-        case '0': 
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed);
-            dash(mod, speed, true);
-            break;
-    }
-}
-
-void send_morse(const char* s, Modulator& mod, uint16_t speed) {
-    cout << "Morse message: " << s << endl;
-    uint16_t i = 0;
-    for (i = 0; s[i] != 0; i++) {
-        if (s[i] == ' ') {
-            // NOTE: WE ALREADY SENT 3 AFTER LAST CHAR
-            silence(mod, 4, speed);
-        } else {
-            send_morse_char(s[i], mod, speed);
-            silence(mod, 3, speed);
-        }
-    }
-    cout << "DONE" << endl;
-}
-
-

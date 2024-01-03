@@ -26,14 +26,18 @@ using namespace radlib;
 
 namespace scamp {
 
-StationDemodulatorListener::StationDemodulatorListener(HD44780* display) 
-:   _display(display) {
+StationDemodulatorListener::StationDemodulatorListener(queue_t* rxQueue) 
+:   _rxQueue(rxQueue),
+    _locked(false),
+    _lockedMarkFreq(0),
+    _lockedSpaceFreq(0) {
 }
 
 void StationDemodulatorListener::frequencyLocked(uint16_t markFreq, uint16_t spaceFreq) {
-    cout << "[Locked on frequency " << markFreq << "/" << spaceFreq << "]" << endl;
-    _logTrigger = true;
-    _sampleCount = 0;
+    //cout << "[Locked on frequency " << markFreq << "/" << spaceFreq << "]" << endl;
+    _locked = true;
+    _lockedMarkFreq = markFreq;
+    _lockedSpaceFreq = spaceFreq;
 }
 
 void StationDemodulatorListener::dataSyncAcquired() {
@@ -46,18 +50,7 @@ void StationDemodulatorListener::badFrameReceived(uint32_t rawFrame) {
 
 void StationDemodulatorListener::received(char asciiChar) {
     //cout << endl << "CHAR: " << asciiChar << endl;
-    cout << asciiChar;
-    cout.flush();
-
-    if (_rxSpaceUsed == 80) {
-        // Shift down by 20 characters
-        for (uint16_t i = 0; i < 60; i++) {
-            _rxSpace[i] = _rxSpace[i + 20];
-        }
-        _rxSpaceUsed = 60;
-    }
-    _rxSpace[_rxSpaceUsed++] = asciiChar;
-    _isDirty = true;
+    bool added = queue_try_add(_rxQueue, &asciiChar);
 }
 
 void StationDemodulatorListener::receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr) {
@@ -69,22 +62,10 @@ void StationDemodulatorListener::receivedBit(bool bit, uint16_t frameBitPos, int
     //cout.flush();
 }
 
-bool StationDemodulatorListener::isDirty() {
-    bool r = _isDirty;
-    _isDirty = false;
-    return r;
-}
-
-void StationDemodulatorListener::render(HD44780& display) const {
-    display.clearDisplay();
-    display.writeLinear(HD44780::Format::FMT_20x4, 
-        (const uint8_t*)_rxSpace, _rxSpaceUsed, 0);
-}
-
 void StationDemodulatorListener::sampleMetrics(uint8_t activeSymbol, bool capture, 
     int32_t lastPLLError,
     float* symbolCorr, float corrThreshold, float corrDiff, float sample) {
-    
+    /*
     _sampleCount++;
 
     if (_logTrigger && 
@@ -93,6 +74,7 @@ void StationDemodulatorListener::sampleMetrics(uint8_t activeSymbol, bool captur
             << lastPLLError << " | " << symbolCorr[1] << " " << symbolCorr[0] << " | "
             << corrThreshold << " " << corrDiff << " [ " << sample << " ]" << endl;
     }
+    */
 }
 
 }
