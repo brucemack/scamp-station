@@ -26,7 +26,7 @@
 #include "hello-ps2keyboard/KeyboardListener.h"
 #include "hello-scamp/Util.h"
 #include "hello-scamp/Frame30.h"
-#include "hello-scamp/TestDemodulatorListener.h"
+//#include "hello-scamp/TestDemodulatorListener.h"
 #include "hello-pico-si5351/si5351.h"
 
 #include "main2.h"
@@ -257,6 +257,7 @@ int main(int argc, const char** argv) {
     TestClockInterface clk;
 #endif
 
+    // ------ DISPLAY SETUP ---------------------------------------------------
     // Use the scanner to find this address
     uint8_t addr = 0x27;
     // 4-bit interface, 2 rows, 5x8 characters
@@ -274,6 +275,13 @@ int main(int argc, const char** argv) {
     display.setDisplay(true, true, true);
     display.returnHome();
     display.setDDRAMAddr(0);
+
+    // Editor
+    char editorSpace[80];  
+    EditorState editorState(editorSpace, (uint16_t)80);
+
+    DisplayPage activePage = DisplayPage::PAGE_LOGO;
+    bool displayDirty = true;
    
     // ------ ADC SETUP -------------------------------------------------------
 #ifdef PICO_BUILD
@@ -316,6 +324,10 @@ int main(int argc, const char** argv) {
     // Fire off the second thread
     multicore_launch_core1(main2);
 
+    // This is where we keep the current status that was received from
+    // the demodulator.
+    DemodulatorStatus currentDemodStatus;
+
     // ------- SI5351 SETUP ---------------------------------------------------
     si_init(i2c1);
     cout << "Initialized Si5351" << endl;
@@ -332,17 +344,11 @@ int main(int argc, const char** argv) {
     // still find the signal.
     const unsigned int tuningErrorHz = 0;    
 
-    // Editor
-    char editorSpace[80];  
-    EditorState editorState(editorSpace, (uint16_t)80);
+    // Main event loop. Prevent exit
 
-    DisplayPage activePage = DisplayPage::PAGE_LOGO;
-    bool displayDirty = true;
+    while (true) { 
 
-    // Prevent exit
-    while (1) { 
-
-        // Check for RX character activity
+        // Check for RX character activity back from the demodulator
         while (!queue_is_empty(&demodRxQueue)) {
             char c;
             queue_remove_blocking(&demodRxQueue, &c);
@@ -354,7 +360,13 @@ int main(int argc, const char** argv) {
         while (!queue_is_empty(&demodStatusQueue)) {
             DemodulatorStatus status;
             queue_remove_blocking(&demodStatusQueue, &status);
-            cout << "TICK" << endl;
+            if (!(status == currentDemodStatus)) {
+                cout << "Demod Status:" << endl;
+                cout << "  Locked     " << status.isLocked << endl;
+                cout << "  Mark Freq  " << status.lockedMarkFreq << endl;
+                cout << endl;
+            }
+            currentDemodStatus = status;
         }
 
         // Check for keyboard activity
@@ -364,10 +376,9 @@ int main(int argc, const char** argv) {
             queue_remove_blocking(&keyEventQueue, &ev);
 
             if (ev.scanCode == PS2_SCAN_ESC) {
-                cout << "UNLOCK" << endl;
                 // Send a command to the demodulator
                 DemodulatorCommand cmd;
-                cmd.cmd = 1;
+                cmd.cmd = DemodulatorCommand::Command::RESET;
                 bool added = queue_try_add(&demodCommandQueue, &cmd);
             } else  if (ev.scanCode == PS2_SCAN_F1) {
                 activePage = DisplayPage::PAGE_LOGO;

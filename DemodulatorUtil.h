@@ -20,11 +20,17 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 
 struct DemodulatorCommand {
-    int cmd;
+
+    enum Command { RESET };
+
+    Command cmd;
 };
 
 struct DemodulatorStatus {
-    int status;
+    bool isLocked;
+    uint16_t lockedMarkFreq;
 };
+
+bool operator==(const DemodulatorStatus& lhs, const DemodulatorStatus& rhs);
 
 #endif 

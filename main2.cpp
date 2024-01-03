@@ -22,11 +22,12 @@ using namespace scamp;
 
 // ===== Data Shared with Main ================================================
 extern queue_t adcSampleQueue;
-// This is the queue used to receive characters back from the 
-// demodulator
+// This is the queue used to receive characters back from the demodulator
 extern queue_t demodRxQueue;
 // This is the queue used to receive status from the demodulator
 extern queue_t demodStatusQueue;
+// This is the queue used to send commands to the demodulator
+extern queue_t demodCommandQueue;
 // Constants
 extern uint16_t sampleFreq;
 extern uint16_t lowFreq;
@@ -87,6 +88,16 @@ static void poll_adc_sample_queue() {
     }
 }
 
+static void poll_demod_command_queue() {
+    while (!queue_is_empty(&demodCommandQueue)) {
+        DemodulatorCommand cmd;
+        queue_remove_blocking(&demodCommandQueue, &cmd);
+        if (cmd.cmd == DemodulatorCommand::Command::RESET) {
+            demod.reset();
+        }
+    }
+}
+
 void main2() {
 
     // One-time setup
@@ -99,24 +110,34 @@ void main2() {
     demod.setListener(&demodListener);
 
     // Setup 
-
-    absolute_time_t nextStatusTime = make_timeout_time_ms(1000);
-
+    const uint32_t stausIntervalMs = 1000;
+    absolute_time_t nextStatusTime = make_timeout_time_ms(stausIntervalMs);
+    
+    // Event loop
     while (true) {
 
-        // Check for inbound samples
+        // Check for inbound ADC samples
         poll_adc_sample_queue();
 
+        // Check for inbound demodulator commands
+        poll_demod_command_queue();
+
+        // Generate demodulator status periodically
         if (absolute_time_diff_us(get_absolute_time(), nextStatusTime) <= 0) {
             
             // Make a status message and send back 
             DemodulatorStatus status;
-            status.status = 1;
-            bool added = queue_try_add(&demodStatusQueue, &status);
+            status.isLocked = demod.isFrequencyLocked();
+            status.lockedMarkFreq = demod.getMarkFreq();
 
-            nextStatusTime = make_timeout_time_ms(1000);
+            queue_try_add(&demodStatusQueue, &status);
+
+            nextStatusTime = make_timeout_time_ms(stausIntervalMs);
         }
-
     }
+}
 
+bool operator== (const DemodulatorStatus& lhs, const DemodulatorStatus& rhs) {
+    return lhs.isLocked == rhs.isLocked &&
+      lhs.lockedMarkFreq == rhs.lockedMarkFreq;
 }
