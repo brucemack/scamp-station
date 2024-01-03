@@ -26,7 +26,6 @@
 #include "hello-ps2keyboard/KeyboardListener.h"
 #include "hello-scamp/Util.h"
 #include "hello-scamp/Frame30.h"
-//#include "hello-scamp/TestDemodulatorListener.h"
 #include "hello-pico-si5351/si5351.h"
 
 #include "main2.h"
@@ -203,7 +202,6 @@ static void enter_rx_mode() {
     }
 }
 
-
 int main(int argc, const char** argv) {
 
 #ifdef PICO_BUILD
@@ -340,6 +338,15 @@ int main(int argc, const char** argv) {
     Si5351FSKModulator fskMod(clk, markFreq, markFreq - 170);
     fskMod.setBaseFreq(rfFreq);
 
+    // ----- RX BUFFER SETUP --------------------------------------------------
+
+    const uint16_t rxBufferSize = 80;
+    uint8_t rxBuffer[rxBufferSize];
+    uint16_t rxBufferUsed = 0;
+    for (uint16_t i = 0; i < rxBufferSize; i++) {
+        rxBuffer[i] = 0;
+    }
+
     // Here we can inject a tuning error to show that the demodulator will
     // still find the signal.
     const unsigned int tuningErrorHz = 0;    
@@ -354,6 +361,15 @@ int main(int argc, const char** argv) {
             queue_remove_blocking(&demodRxQueue, &c);
             cout << c;
             cout.flush();
+            if (rxBufferUsed == 80) {
+                // Shift down by 20 characters
+                for (uint16_t i = 0; i < 60; i++) {
+                    rxBuffer[i] = rxBuffer[i + 20];
+                }
+                rxBufferUsed = 60;
+            }
+            rxBuffer[rxBufferUsed++] = c;
+            displayDirty = true;
         }
 
         // Check for demodulator status activity
@@ -371,6 +387,7 @@ int main(int argc, const char** argv) {
 
         // Check for keyboard activity
         if (!queue_is_empty(&keyEventQueue)) {
+
             // Pull off keyboard event
             KeyEvent ev;
             queue_remove_blocking(&keyEventQueue, &ev);
@@ -535,18 +552,17 @@ int main(int argc, const char** argv) {
                     (uint8_t*)text, 20, 0);
 
                 memset(text, 32, 20);
-                /*
-                if (demod.isFrequencyLocked()) {
-                    sprintf(text,"LOCKED %03d", demod.getMarkFreq());
+                if (currentDemodStatus.isLocked) {
+                    sprintf(text,"LOCKED %03d", currentDemodStatus.lockedMarkFreq);
                 } else {
-                    sprintf(text,"NOLOCK", demod.getMarkFreq());
+                    sprintf(text,"NOLOCK");
                 }
-                */
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)text, 20, 20);
 
             } else if (activePage == DisplayPage::PAGE_RX) {
-                //demodListener.render(display);
+                display.writeLinear(HD44780::Format::FMT_20x4, 
+                    (uint8_t*)rxBuffer, 80, 0);
             } else if (activePage == DisplayPage::PAGE_TX) {
                 if (editorState.isClear()) {       
                     display.clearDisplay();
