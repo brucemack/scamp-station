@@ -61,8 +61,8 @@ using namespace std;
 using namespace radlib;
 using namespace scamp;
 
-const uint16_t sampleFreq = 2000;
-const uint16_t lowFreq = 100;
+uint16_t sampleFreq = 2000;
+uint16_t lowFreq = 100;
 
 static const uint32_t adcClockHz = 48000000;
 static const unsigned int samplesPerSymbol = 60;

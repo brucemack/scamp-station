@@ -9,6 +9,7 @@ pico_sdk_init()
 
 add_executable(main
   main.cpp 
+  main2.cpp 
   StationDemodulatorListener.cpp
   Si5351FSKModulator.cpp
   Si5351Modulator.cpp
@@ -20,6 +21,7 @@ add_executable(main
   radlib/hw/pico/PICOClockInterface.cpp
   radlib/rtty/BaudotEncoder.cpp
   radlib/rtty/BaudotDecoder.cpp
+  radlib/morse/MorseEncoder.cpp
   radlib/tests/TestI2CInterface.cpp 
   radlib/tests/TestClockInterface.cpp
   hello-ps2keyboard/PS2Keyboard.cpp

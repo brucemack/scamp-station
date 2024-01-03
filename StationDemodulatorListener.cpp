@@ -22,7 +22,6 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "StationDemodulatorListener.h"
 
 using namespace std;
-using namespace radlib;
 
 namespace scamp {
 

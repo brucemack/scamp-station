@@ -28,8 +28,8 @@ extern queue_t demodRxQueue;
 // This is the queue used to receive status from the demodulator
 extern queue_t demodStatusQueue;
 // Constants
-extern const uint16_t sampleFreq;
-extern const uint16_t lowFreq;
+extern uint16_t sampleFreq;
+extern uint16_t lowFreq;
 // ===== Data Shared with Main ================================================
 
 // The size of the FFT used for frequency acquisition
@@ -105,7 +105,7 @@ void main2() {
     while (true) {
 
         // Check for inbound samples
-        pull_adc_sample_queue();
+        poll_adc_sample_queue();
 
         if (absolute_time_diff_us(get_absolute_time(), nextStatusTime) <= 0) {
             
