@@ -10,6 +10,7 @@
 #include "pico/util/queue.h"
 #endif
 
+#include "radlib/util/WindowAverage.h"
 #include "radlib/rtty/BaudotEncoder.h"
 #include "radlib/lcd/HD44780_PCF8574.h"
 #include "radlib/tests/TestI2CInterface.h"
@@ -96,6 +97,14 @@ static StationMode stationMode = StationMode::IDLE_MODE;
 static uint32_t maxUs = 0;
 
 enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
+
+// Center adjustment for the ADC
+int16_t adcCenterAdjust = -40;
+
+// An area used for analysis of ADC samples
+static int16_t adcStatArea[32];
+static const int16_t adcStatAreaSizeLog2 = 5;
+static WindowAverage adcStatSamples(adcStatAreaSizeLog2, adcStatArea);
 
 // ----- KEYBOARD RELATED -------------------------------------------------
 
@@ -356,7 +365,10 @@ int main(int argc, const char** argv) {
             uint16_t lastSample = 0;
             queue_remove_blocking(&adcSampleQueue, &lastSample);
             // Center around zero
-            lastSample -= (2048 + 60);
+            lastSample -= (2048);
+            lastSample += adcCenterAdjust;
+            // Capture sample for statistical analysis
+            adcStatSamples.sample((int16_t)lastSample);
             // TODO: REMOVE FLOAT
             const float lastSampleF32 = lastSample / 2048.0;
             const q15 lastSampleQ15 = f32_to_q15(lastSampleF32);
@@ -390,6 +402,16 @@ int main(int argc, const char** argv) {
             } else  if (ev.scanCode == PS2_SCAN_F4) {
                 activePage = DisplayPage::PAGE_RX;
                 displayDirty = true;
+            } else  if (ev.scanCode == PS2_SCAN_F5) {
+                cout << "ADC Stats:" << endl;
+                cout << "AVG " << adcStatSamples.getAvg() << endl;
+                cout << "MIN " << adcStatSamples.getMin() << endl;
+                cout << "MAX " << adcStatSamples.getMax() << endl;
+                cout << "|AVG| " << (float)adcStatSamples.getAvg() / 2048.0f << endl;
+                cout << "|MIN| " << (float)adcStatSamples.getMin() / 2048.0f << endl;
+                cout << "|MAX| " << (float)adcStatSamples.getMax() / 2048.0f << endl;
+                cout << endl;
+
             } else if (ev.scanCode == PS2_SCAN_ENTER) {
                 int l = strlen(editorSpace);
                 if (l > 0) {
