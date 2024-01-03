@@ -29,6 +29,7 @@
 #include "hello-scamp/TestDemodulatorListener.h"
 #include "hello-pico-si5351/si5351.h"
 
+#include "main2.h"
 #include "Si5351Modulator.h"
 #include "Si5351FSKModulator.h"
 #include "EditorState.h"
@@ -310,6 +311,7 @@ int main(int argc, const char** argv) {
     // ------ DEMODULATION SETUP ----------------------------------------------
     queue_init(&demodRxQueue, 1, 16);
     queue_init(&demodCommandQueue, sizeof(DemodulatorCommand), 4);
+    queue_init(&demodStatusQueue, sizeof(DemodulatorStatus), 4);
 
     // Fire off the second thread
     multicore_launch_core1(main2);
@@ -346,6 +348,13 @@ int main(int argc, const char** argv) {
             queue_remove_blocking(&demodRxQueue, &c);
             cout << c;
             cout.flush();
+        }
+
+        // Check for demodulator status activity
+        while (!queue_is_empty(&demodStatusQueue)) {
+            DemodulatorStatus status;
+            queue_remove_blocking(&demodStatusQueue, &status);
+            cout << "TICK" << endl;
         }
 
         // Check for keyboard activity

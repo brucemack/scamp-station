@@ -3,12 +3,17 @@
 
 #ifdef PICO_BUILD
 #include "pico/stdlib.h"
+#include "hardware/gpio.h"
+#include "hardware/i2c.h"
+#include "hardware/adc.h"
+#include "hardware/sync.h"
 #include "pico/util/queue.h"
 #endif
 
 #include "radlib/util/WindowAverage.h"
 #include "hello-scamp/Demodulator.h"
 
+#include "DemodulatorUtil.h"
 #include "StationDemodulatorListener.h"
 
 using namespace std;
@@ -93,12 +98,24 @@ void main2() {
     StationDemodulatorListener demodListener(&demodRxQueue);
     demod.setListener(&demodListener);
 
+    // Setup 
+
+    absolute_time_t nextStatusTime = make_timeout_time_ms(1000);
+
     while (true) {
 
         // Check for inbound samples
         pull_adc_sample_queue();
 
-        // Make a status message and send back
+        if (absolute_time_diff_us(get_absolute_time(), nextStatusTime) <= 0) {
+            
+            // Make a status message and send back 
+            DemodulatorStatus status;
+            status.status = 1;
+            bool added = queue_try_add(&demodStatusQueue, &status);
+
+            nextStatusTime = make_timeout_time_ms(1000);
+        }
 
     }
 

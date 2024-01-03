@@ -24,6 +24,7 @@ struct DemodulatorCommand {
 };
 
 struct DemodulatorStatus {
+    int status;
 };
 
 #endif 
