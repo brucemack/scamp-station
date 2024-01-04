@@ -8,6 +8,7 @@
 #include "hardware/adc.h"
 #include "hardware/sync.h"
 #include "pico/util/queue.h"
+#include "pico/lock_core.h"
 #endif
 
 #include "radlib/util/WindowAverage.h"
@@ -57,6 +58,9 @@ static uint32_t maxUs = 0;
 
 // Center adjustment for the ADC
 static int16_t adcCenterAdjust = -40;
+
+// A mutex used to protect the internal data structures
+auto_init_mutex(lock1);
 
 static uint32_t get_us() {
     absolute_time_t at = get_absolute_time();
@@ -109,12 +113,13 @@ void main2() {
     StationDemodulatorListener demodListener(&demodRxQueue);
     demod.setListener(&demodListener);
 
-    // Setup 
     const uint32_t stausIntervalMs = 1000;
     absolute_time_t nextStatusTime = make_timeout_time_ms(stausIntervalMs);
     
     // Event loop
     while (true) {
+
+        mutex_enter_blocking(&lock1);
 
         // Check for inbound ADC samples
         poll_adc_sample_queue();
@@ -134,10 +139,24 @@ void main2() {
 
             nextStatusTime = make_timeout_time_ms(stausIntervalMs);
         }
+
+        mutex_exit(&lock1);
     }
 }
 
 bool operator== (const DemodulatorStatus& lhs, const DemodulatorStatus& rhs) {
     return lhs.isLocked == rhs.isLocked &&
       lhs.lockedMarkFreq == rhs.lockedMarkFreq;
+}
+
+bool getLiveSpectrum(q15* mag, uint16_t size) {
+    if (!mutex_is_initialized(&lock1)) {
+        return false;
+    }
+    mutex_enter_blocking(&lock1);
+    for (uint16_t i = 0; i < size && i < fftN; i++) {
+        mag[i] = fftResult[i].approx_mag_q15();
+    }
+    mutex_exit(&lock1);
+    return true;
 }

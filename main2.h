@@ -16,7 +16,15 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #ifndef _main2_h
 #define _main2_h
 
+#include <cstdint>
+#include "hello-scamp/fixed_math.h"
+
+// This function should be run continuously on a background thread
 void main2();
 
+// Call this to extract the current FFT spectrum.  (Thread safe)
+bool getLiveSpectrum(q15* mag, uint16_t size);
+
 #endif
+
 
