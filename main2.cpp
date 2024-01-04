@@ -9,6 +9,7 @@
 #include "hardware/sync.h"
 #include "pico/util/queue.h"
 #include "pico/lock_core.h"
+#include "pico/multicore.h"
 #endif
 
 #include "radlib/util/WindowAverage.h"
