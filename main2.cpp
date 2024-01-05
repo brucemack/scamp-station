@@ -13,7 +13,7 @@
 #endif
 
 #include "radlib/util/WindowAverage.h"
-#include "radlib/scamp/Demodulator.h"
+#include "radlib/scamp/SCAMPDemodulator.h"
 
 #include "DemodulatorUtil.h"
 #include "StationDemodulatorListener.h"
@@ -43,7 +43,7 @@ static q15 window[fftN];
 static q15 buffer[fftN];
 static cq15 fftResult[fftN];
 // The demodulator 
-static Demodulator demod(sampleFreq, lowFreq, log2fftN, trigTable, window, 
+static SCAMPDemodulator demod(sampleFreq, lowFreq, log2fftN, trigTable, window, 
     fftResult, buffer);
 
 // Diagnostic area
