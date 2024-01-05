@@ -114,7 +114,7 @@ void main2() {
     StationDemodulatorListener demodListener(&demodRxQueue);
     demod.setListener(&demodListener);
 
-    const uint32_t stausIntervalMs = 1000;
+    const uint32_t stausIntervalMs = 500;
     absolute_time_t nextStatusTime = make_timeout_time_ms(stausIntervalMs);
     
     // Event loop

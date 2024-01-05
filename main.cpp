@@ -383,20 +383,19 @@ int main(int argc, const char** argv) {
                 cout << endl;
             }
             currentDemodStatus = status;
-
+            /*
             // Output spectrum for waterfall display
             q15 spectrumMag[256];
             getLiveSpectrum(spectrumMag, 256);
             cout << "[WF]0,0";
             for (uint16_t i = 0; i < 256; i++) {
-                if (i > 0) {
-                    cout << ",";
-                }
+                cout << ",";
                 // Convert the magnitude into a number from 0->255
-                float f = q15_to_f32(spectrumMag[i]) * 255.0;
+                float f = q15_to_f32(spectrumMag[i]) * 2550.0f;
                 cout << (int)f;
             }
             cout << endl;
+            */
         }
 
         // Check for keyboard activity
