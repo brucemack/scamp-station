@@ -68,7 +68,10 @@ static const unsigned int samplesPerSymbol = 60;
 static const unsigned int usPerSymbol = (1000000 / sampleFreq) * samplesPerSymbol;
 static const unsigned int markFreq = 667;
 static const unsigned int spaceFreq = 600;
-static const uint32_t rfFreq = 7035000;
+
+// This is the "tuned" frequency.  For SCAMP FSK this is the 
+// center frequency.
+static uint32_t rfFreq = 7035000;
 
 enum StationMode { IDLE_MODE, RX_MODE, TX_MODE };
 
@@ -511,20 +514,24 @@ int main(int argc, const char** argv) {
                 // Switch modes
                 enter_rx_mode();
             } else  if (ev.scanCode == PS2_SCAN_UP) {
-                modulator.setBaseFreq(modulator.getBaseFreq() + 1000);
-                fskMod.setBaseFreq(fskMod.getBaseFreq() + 1000);
+                rfFreq += 1000;
+                modulator.setBaseFreq(rfFreq);
+                fskMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_DOWN) {
-                modulator.setBaseFreq(modulator.getBaseFreq() - 1000);
-                fskMod.setBaseFreq(fskMod.getBaseFreq() - 1000);
+                rfFreq += 1000;
+                modulator.setBaseFreq(rfFreq);
+                fskMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_PGUP) {
-                modulator.setBaseFreq(modulator.getBaseFreq() + 100);
-                fskMod.setBaseFreq(fskMod.getBaseFreq() + 100);
+                rfFreq += 50;
+                modulator.setBaseFreq(rfFreq);
+                fskMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_PGDN) {
-                modulator.setBaseFreq(modulator.getBaseFreq() - 100);
-                fskMod.setBaseFreq(fskMod.getBaseFreq() - 100);
+                rfFreq -= 50;
+                modulator.setBaseFreq(rfFreq);
+                fskMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else {
                 char a = ev.getAscii();
