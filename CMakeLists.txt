@@ -34,6 +34,7 @@ add_executable(main
 	radlib/scamp/ClockRecoveryPLL.cpp 
 	radlib/scamp/ClockRecoveryDLL.cpp 
   radlib/scamp/Demodulator.cpp 
+  radlib/scamp/SCAMPDemodulator.cpp 
   hello-ps2keyboard/PS2Keyboard.cpp
   hello-pico-si5351/si5351.c 
 	)
