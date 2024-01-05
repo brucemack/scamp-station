@@ -334,11 +334,11 @@ int main(int argc, const char** argv) {
 
     si_enable(0, false);
 
-    Si5351Modulator modulator(clk, markFreq, spaceFreq);
+    Si5351FSKModulator modulator(clk, markFreq, spaceFreq);
     modulator.setBaseFreq(rfFreq);
 
-    Si5351FSKModulator fskMod(clk, markFreq, markFreq - 170);
-    fskMod.setBaseFreq(rfFreq);
+    Si5351FSKModulator rttyMod(clk, markFreq, markFreq - 170);
+    rttyMod.setBaseFreq(rfFreq);
 
     // ----- RX BUFFER SETUP --------------------------------------------------
 
@@ -464,12 +464,12 @@ int main(int argc, const char** argv) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
-                fskMod.enable(true);
+                modulator.enable(true);
                 // The actual data sending
                 Frame30 frames[48];
                 modulateMessage("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ K",
-                        modulator, usPerSymbol, frames, 48);
-                fskMod.enable(false);
+                    modulator, usPerSymbol, frames, 48);
+                modulator.enable(false);
                 // Switch modes
                 enter_rx_mode();
                 // TEMP
@@ -480,7 +480,7 @@ int main(int argc, const char** argv) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
-                fskMod.enable(true);
+                rttyMod.enable(true);
                 transmitBaudot("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ K", fskMod, 22002);
                 fskMod.enable(false);
                 // Switch modes
@@ -494,9 +494,9 @@ int main(int argc, const char** argv) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
-                fskMod.enable(true);
+                rttyMod.enable(true);
                 send_morse("CQ CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", fskMod, 15);
-                fskMod.enable(false);
+                rttyMod.enable(false);
                 // Switch modes
                 enter_rx_mode();
                 // TEMP
