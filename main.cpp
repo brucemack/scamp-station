@@ -64,12 +64,13 @@ uint16_t lowFreq = 100;
 static const uint32_t adcClockHz = 48000000;
 static const unsigned int samplesPerSymbol = 60;
 static const unsigned int usPerSymbol = (1000000 / sampleFreq) * samplesPerSymbol;
-static const unsigned int markFreq = 667;
-static const unsigned int spaceFreq = 600;
+//static const unsigned int markFreq = 667;
+//static const unsigned int spaceFreq = 600;
+static const unsigned int bwFreq = 67;
 
 // This is the "tuned" frequency.  For SCAMP FSK this is the 
 // center frequency.
-static uint32_t rfFreq = 7035000;
+static uint32_t rfFreq = 7078000;
 
 enum StationMode { IDLE_MODE, RX_MODE, TX_MODE };
 
@@ -333,10 +334,13 @@ int main(int argc, const char** argv) {
 
     si_enable(0, false);
 
-    Si5351FSKModulator modulator(clk, markFreq, spaceFreq);
+    int32_t m = (bwFreq / 2);
+    int32_t s = m - bwFreq;
+
+    Si5351FSKModulator modulator(clk, m, s);
     modulator.setBaseFreq(rfFreq);
 
-    Si5351FSKModulator rttyMod(clk, markFreq, markFreq - 170);
+    Si5351FSKModulator rttyMod(clk, m, m - 170);
     rttyMod.setBaseFreq(rfFreq);
 
     // ----- RX BUFFER SETUP --------------------------------------------------

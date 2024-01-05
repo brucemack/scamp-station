@@ -23,13 +23,13 @@ using namespace std;
 using namespace radlib;
 
 Si5351FSKModulator::Si5351FSKModulator(ClockInterface& clock,
-    uint32_t markOffset, uint32_t spaceOffset)
+    int32_t markOffset, int32_t spaceOffset)
 :   _clock(clock),
     _markOffset(markOffset),
     _spaceOffset(spaceOffset) {
 }
 
-void Si5351FSKModulator::setBaseFreq(uint32_t freqHz) {
+void Si5351FSKModulator::setBaseFreq(int32_t freqHz) {
     _baseFreq = freqHz;
 }
 
@@ -38,7 +38,8 @@ void Si5351FSKModulator::enable(bool on) {
 }
 
 void Si5351FSKModulator::sendCW() {
-    si_evaluate(0, _baseFreq + _markOffset + _correction);
+    int32_t f = _baseFreq + _markOffset + _correction;
+    si_evaluate(0, f);
     _clock.sleepMs(5000);
 }
 
@@ -49,12 +50,14 @@ void Si5351FSKModulator::sendSilence(uint32_t us) {
 }
 
 void Si5351FSKModulator::sendMark(uint32_t us) {
-    si_evaluate(0, _baseFreq + _markOffset + _correction);
+    int32_t f = _baseFreq + _markOffset + _correction;
+    si_evaluate(0, f);
     _clock.sleepMs(us / 1000);
 }
 
 void Si5351FSKModulator::sendSpace(uint32_t us) {
-    si_evaluate(0, _baseFreq + _spaceOffset + _correction);
+    int32_t f = _baseFreq + _spaceOffset + _correction;
+    si_evaluate(0, f);
     _clock.sleepMs(us / 1000);
 }
 
