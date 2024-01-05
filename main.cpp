@@ -24,9 +24,9 @@
 #endif
 
 #include "hello-ps2keyboard/KeyboardListener.h"
-#include "hello-scamp/Util.h"
-#include "hello-scamp/Frame30.h"
 #include "hello-pico-si5351/si5351.h"
+#include "radlib/scamp/Util.h"
+#include "radlib/scamp/Frame30.h"
 
 #include "main2.h"
 #include "Si5351Modulator.h"
@@ -58,7 +58,6 @@
 
 using namespace std;
 using namespace radlib;
-using namespace scamp;
 
 uint16_t sampleFreq = 2000;
 uint16_t lowFreq = 100;

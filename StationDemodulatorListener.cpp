@@ -22,8 +22,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "StationDemodulatorListener.h"
 
 using namespace std;
-
-namespace scamp {
+using namespace radlib;
 
 StationDemodulatorListener::StationDemodulatorListener(queue_t* rxQueue) 
 :   _rxQueue(rxQueue),
@@ -74,6 +73,4 @@ void StationDemodulatorListener::sampleMetrics(uint8_t activeSymbol, bool captur
             << corrThreshold << " " << corrDiff << " [ " << sample << " ]" << endl;
     }
     */
-}
-
 }

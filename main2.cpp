@@ -13,14 +13,13 @@
 #endif
 
 #include "radlib/util/WindowAverage.h"
-#include "hello-scamp/Demodulator.h"
+#include "radlib/scamp/Demodulator.h"
 
 #include "DemodulatorUtil.h"
 #include "StationDemodulatorListener.h"
 
 using namespace std;
 using namespace radlib;
-using namespace scamp;
 
 // ===== Data Shared with Main ================================================
 extern queue_t adcSampleQueue;

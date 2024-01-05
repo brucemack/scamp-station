@@ -25,11 +25,9 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "pico/util/queue.h"
 #endif
 
-#include "hello-scamp/DemodulatorListener.h"
+#include "radlib/scamp/DemodulatorListener.h"
 
-namespace scamp {
-
-class StationDemodulatorListener : public DemodulatorListener {
+class StationDemodulatorListener : public radlib::DemodulatorListener {
 public:
 
     StationDemodulatorListener(queue_t* rxQueue);
@@ -53,7 +51,5 @@ private:
     uint16_t _lockedMarkFreq;
     uint16_t _lockedSpaceFreq;
 };
-
-}
 
 #endif
