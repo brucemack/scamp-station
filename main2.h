@@ -17,7 +17,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #define _main2_h
 
 #include <cstdint>
-#include "hello-scamp/fixed_math.h"
+#include "radlib/util/fixed_math.h"
 
 // This function should be run continuously on a background thread
 void main2();

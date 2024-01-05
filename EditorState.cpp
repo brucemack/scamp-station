@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2023 - Bruce MacKinnon KC1FSZ
+Copyright (C) 2024 - Bruce MacKinnon KC1FSZ
 
 This program is free software: you can redistribute it and/or modify it under 
 the terms of the GNU General Public License as published by the Free 
@@ -20,8 +20,6 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 using namespace radlib;
-
-namespace scamp {
 
 EditorState::EditorState(char* editSpace, uint16_t editSpaceSize) 
 :   _editSpace(editSpace),
@@ -60,7 +58,4 @@ void EditorState::render(HD44780& display) const {
     int l = strlen(_editSpace);
     display.writeLinear(HD44780::Format::FMT_20x4, (const uint8_t*)_editSpace, l, 0);
     display.setCursorLinear(HD44780::Format::FMT_20x4, _cursor);
-}
-
-
 }

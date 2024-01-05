@@ -12,7 +12,6 @@ add_executable(main
   main2.cpp 
   StationDemodulatorListener.cpp
   Si5351FSKModulator.cpp
-  Si5351Modulator.cpp
   EditorState.cpp
   radlib/util/WindowAverage.cpp
   radlib/lcd/HD44780.cpp 
@@ -24,18 +23,18 @@ add_executable(main
   radlib/morse/MorseEncoder.cpp
   radlib/tests/TestI2CInterface.cpp 
   radlib/tests/TestClockInterface.cpp
+  radlib/util/dsp_util.cpp
+  radlib/util/fixed_math.cpp
+  radlib/util/fixed_fft.cpp
+  radlib/scamp/Symbol6.cpp 
+  radlib/scamp/CodeWord12.cpp  
+  radlib/scamp/CodeWord24.cpp 
+	radlib/scamp/Frame30.cpp 
+  radlib/scamp/Util.cpp 
+	radlib/scamp/ClockRecoveryPLL.cpp 
+	radlib/scamp/ClockRecoveryDLL.cpp 
+  radlib/scamp/Demodulator.cpp 
   hello-ps2keyboard/PS2Keyboard.cpp
-  hello-scamp/fixed_math.cpp
-  hello-scamp/fixed_fft.cpp
-  hello-scamp/Symbol6.cpp 
-  hello-scamp/CodeWord12.cpp  
-  hello-scamp/CodeWord24.cpp 
-	hello-scamp/Frame30.cpp 
-  hello-scamp/Util.cpp 
-	hello-scamp/ClockRecoveryPLL.cpp 
-	hello-scamp/ClockRecoveryDLL.cpp 
-  hello-scamp/Demodulator.cpp 
-  hello-scamp/TestDemodulatorListener.cpp
   hello-pico-si5351/si5351.c 
 	)
 pico_enable_stdio_usb(main 1)

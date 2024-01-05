@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2023 - Bruce MacKinnon KC1FSZ
+Copyright (C) 2024 - Bruce MacKinnon KC1FSZ
 
 This program is free software: you can redistribute it and/or modify it under 
 the terms of the GNU General Public License as published by the Free 
@@ -17,8 +17,6 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #define _EditorState_h
 
 #include "radlib/lcd/HD44780.h"
-
-namespace scamp {
 
 class EditorState {
 public:
@@ -38,8 +36,6 @@ private:
     uint16_t _editSpaceSize;
     uint16_t _cursor;
 };
-
-}
 
 #endif
 

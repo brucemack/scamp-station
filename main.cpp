@@ -29,7 +29,6 @@
 #include "radlib/scamp/Frame30.h"
 
 #include "main2.h"
-#include "Si5351Modulator.h"
 #include "Si5351FSKModulator.h"
 #include "EditorState.h"
 #include "DemodulatorUtil.h"
@@ -161,13 +160,13 @@ static uint32_t get_us() {
 /**
  * Formats the tuning frequency into "7.042 5" format.
 */
-static void fmtFreq(Si5351Modulator& mod, char* buffer) {
+static void fmtFreq(Si5351FSKModulator& mod, char* buffer) {
     uint32_t f = mod.getBaseFreq();
     uint32_t m = f / 1000000;
     uint32_t k = (f / 1000) % 1000;
-    uint32_t h = (f % 1000) / 100;
-    sprintf(buffer, "%2d.%03d %d", m, k, h);
-    buffer[8] = 32;
+    uint32_t h = (f % 1000);
+    sprintf(buffer, "%2d.%03d %03d", m, k, h);
+    buffer[10] = 32;
 }
 
 /**
@@ -481,8 +480,8 @@ int main(int argc, const char** argv) {
                 enter_tx_mode(clk);
                 // Transmission
                 rttyMod.enable(true);
-                transmitBaudot("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ K", fskMod, 22002);
-                fskMod.enable(false);
+                transmitBaudot("CQ CQ DE KC1FSZ KC1FSZ KC1FSZ K", rttyMod, 22002);
+                rttyMod.enable(false);
                 // Switch modes
                 enter_rx_mode();
                 // TEMP
@@ -495,7 +494,7 @@ int main(int argc, const char** argv) {
                 enter_tx_mode(clk);
                 // Transmission
                 rttyMod.enable(true);
-                send_morse("CQ CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", fskMod, 15);
+                send_morse("CQ CQ CQ DE KC1FSZ KC1FSZ KC1FSZ", rttyMod, 15);
                 rttyMod.enable(false);
                 // Switch modes
                 enter_rx_mode();
@@ -515,24 +514,25 @@ int main(int argc, const char** argv) {
             } else  if (ev.scanCode == PS2_SCAN_UP) {
                 rfFreq += 1000;
                 modulator.setBaseFreq(rfFreq);
-                fskMod.setBaseFreq(rfFreq);
+                rttyMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_DOWN) {
                 rfFreq += 1000;
                 modulator.setBaseFreq(rfFreq);
-                fskMod.setBaseFreq(rfFreq);
+                rttyMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_PGUP) {
                 rfFreq += 50;
                 modulator.setBaseFreq(rfFreq);
-                fskMod.setBaseFreq(rfFreq);
+                rttyMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else  if (ev.scanCode == PS2_SCAN_PGDN) {
                 rfFreq -= 50;
                 modulator.setBaseFreq(rfFreq);
-                fskMod.setBaseFreq(rfFreq);
+                rttyMod.setBaseFreq(rfFreq);
                 displayDirty = true;
             } else {
+                // TODO: MAKE THIS DEPEND ON SCREEN MODE
                 char a = ev.getAscii();
                 if (a != 0) {
                     editorState.addChar(upcase(a));
@@ -555,7 +555,7 @@ int main(int argc, const char** argv) {
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
-                    (uint8_t*)"V0.05", 5, 20);
+                    (uint8_t*)"V0.06", 5, 20);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"Copyright (c) 2023", 18, 40);
             } else if (activePage == DisplayPage::PAGE_STATUS) {
