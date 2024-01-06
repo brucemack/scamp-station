@@ -375,7 +375,9 @@ int main(int argc, const char** argv) {
                 rxBufferUsed = 60;
             }
             rxBuffer[rxBufferUsed++] = c;
-            displayDirty = true;
+            if (activePage == DisplayPage::PAGE_RX) {
+                displayDirty = true;
+            }
         }
 
         // Check for demodulator status activity
@@ -565,8 +567,7 @@ int main(int argc, const char** argv) {
                         modulator.setBaseFreq(rfFreq);
                         rttyMod.setBaseFreq(rfFreq);
                         displayDirty = true;
-                    }
-                    else if (ev.getAscii() == 'q') {
+                    } else if (ev.getAscii() == 'q') {
                         if (markFreq > 0) {
                             markFreq--;
                         }

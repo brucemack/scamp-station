@@ -13,7 +13,8 @@
 #endif
 
 #include "radlib/util/WindowAverage.h"
-#include "radlib/scamp/SCAMPDemodulator.h"
+//#include "radlib/scamp/SCAMPDemodulator.h"
+#include "radlib/rtty/RTTYDemodulator.h"
 
 #include "DemodulatorUtil.h"
 #include "StationDemodulatorListener.h"
@@ -42,8 +43,9 @@ static q15 trigTable[fftN];
 static q15 window[fftN];
 static q15 buffer[fftN];
 static cq15 fftResult[fftN];
-// The demodulator 
-static SCAMPDemodulator demod(sampleFreq, lowFreq, log2fftN, trigTable, window, 
+
+// One-time setup
+static RTTYDemodulator demod(sampleFreq, lowFreq, log2fftN, trigTable, window, 
     fftResult, buffer);
 
 // Diagnostic area
@@ -99,12 +101,13 @@ static void poll_demod_command_queue() {
         if (cmd.cmd == DemodulatorCommand::Command::RESET) {
             demod.reset();
         }
+        else if (cmd.cmd == DemodulatorCommand::Command::SET_MARK) {
+            demod.setFrequencyLock(cmd.markFreq);
+        }
     }
 }
 
 void main2() {
-
-    // One-time setup
 
     // Create the demodulator listener
     //TestDemodulatorListener demodListener(cout, samples, 180);
@@ -112,6 +115,9 @@ void main2() {
     //demodListener.setTriggerDelay(0);
     StationDemodulatorListener demodListener(&demodRxQueue);
     demod.setListener(&demodListener);
+
+    demod.setSymbolSpread(-170);
+    demod.setFrequencyLock(667);
 
     const uint32_t stausIntervalMs = 500;
     absolute_time_t nextStatusTime = make_timeout_time_ms(stausIntervalMs);
