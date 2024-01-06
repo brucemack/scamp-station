@@ -14,18 +14,19 @@ add_executable(main
   Si5351FSKModulator.cpp
   EditorState.cpp
   radlib/util/WindowAverage.cpp
+  radlib/util/dsp_util.cpp
+  radlib/util/fixed_math.cpp
+  radlib/util/fixed_fft.cpp
   radlib/lcd/HD44780.cpp 
   radlib/lcd/HD44780_PCF8574.cpp 
   radlib/hw/pico/PICOI2CInterface.cpp 
   radlib/hw/pico/PICOClockInterface.cpp
   radlib/rtty/BaudotEncoder.cpp
   radlib/rtty/BaudotDecoder.cpp
+  radlib/rtty/RTTYDemodulator.cpp
   radlib/morse/MorseEncoder.cpp
   radlib/tests/TestI2CInterface.cpp 
   radlib/tests/TestClockInterface.cpp
-  radlib/util/dsp_util.cpp
-  radlib/util/fixed_math.cpp
-  radlib/util/fixed_fft.cpp
   radlib/scamp/Symbol6.cpp 
   radlib/scamp/CodeWord12.cpp  
   radlib/scamp/CodeWord24.cpp 

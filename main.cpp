@@ -387,6 +387,9 @@ int main(int argc, const char** argv) {
                 cout << "  Locked     " << status.isLocked << endl;
                 cout << "  Mark Freq  " << status.lockedMarkFreq << endl;
                 cout << endl;
+                if (activePage == DisplayPage::PAGE_STATUS) {
+                    displayDirty = true;
+                }
             }
             currentDemodStatus = status;
             /*
@@ -567,15 +570,21 @@ int main(int argc, const char** argv) {
                         if (markFreq > 0) {
                             markFreq--;
                         }
-                        modulator.setFrequencyLock(markFreq);
-                        rttyMod.setFrequencyLock(markFreq);
+                        // Send a command to the demodulator
+                        DemodulatorCommand cmd;
+                        cmd.cmd = DemodulatorCommand::Command::SET_MARK;
+                        cmd.markFreq = markFreq;
+                        queue_try_add(&demodCommandQueue, &cmd);
                     }
                     else if (ev.getAscii() == 'w') {
                         if (markFreq < 1000) {
                             markFreq++;
                         }
-                        modulator.setFrequencyLock(markFreq);
-                        rttyMod.setFrequencyLock(markFreq);
+                        // Send a command to the demodulator
+                        DemodulatorCommand cmd;
+                        cmd.cmd = DemodulatorCommand::Command::SET_MARK;
+                        cmd.markFreq = markFreq;
+                        queue_try_add(&demodCommandQueue, &cmd);
                     }
                 }
             }
