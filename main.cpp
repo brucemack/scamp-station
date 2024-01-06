@@ -64,7 +64,8 @@ uint16_t lowFreq = 100;
 static const uint32_t adcClockHz = 48000000;
 static const unsigned int samplesPerSymbol = 60;
 static const unsigned int usPerSymbol = (1000000 / sampleFreq) * samplesPerSymbol;
-//static const unsigned int markFreq = 667;
+// Adjustable mark frequency
+unsigned int markFreq = 667;
 //static const unsigned int spaceFreq = 600;
 static const unsigned int bwFreq = 67;
 
@@ -410,6 +411,8 @@ int main(int argc, const char** argv) {
             KeyEvent ev;
             queue_remove_blocking(&keyEventQueue, &ev);
 
+            // Look for all of the keys that don't depend on which page we are on
+
             if (ev.scanCode == PS2_SCAN_ESC) {
                 // Send a command to the demodulator
                 DemodulatorCommand cmd;
@@ -438,32 +441,8 @@ int main(int argc, const char** argv) {
                 cout << "|MAX| " << (float)adcStatSamples.getMax() / 2048.0f << endl;
                 cout << endl;
                 */
-            } else if (ev.scanCode == PS2_SCAN_ENTER) {
-                int l = strlen(editorSpace);
-                if (l > 0) {
-                    // Set message
-                    display.clearDisplay();
-                    display.writeLinear(HD44780::Format::FMT_20x4, 
-                        (const uint8_t*)"Sending ...", 11, 0);
-                    // Switch modes
-                    enter_tx_mode(clk);
-                    // Radio on
-                    modulator.enable(true);
-                    // The actual data sending
-                    Frame30 frames[48];
-                    uint16_t framesSent = modulateMessage(editorSpace, 
-                        modulator, usPerSymbol, frames, 48);
-                    // Radio off
-                    modulator.enable(false);
-                    // Switch modes
-                    enter_rx_mode();
-                    // Display
-                    editorState.clear();
-                    displayDirty = true;
-                }
-            } 
             // SCAMP CQ
-            else if (ev.scanCode == PS2_SCAN_F9) {
+            } else if (ev.scanCode == PS2_SCAN_F9) {
                 // Switch modes
                 enter_tx_mode(clk);
                 // Transmission
@@ -515,38 +494,89 @@ int main(int argc, const char** argv) {
                 modulator.enable(false);
                 // Switch modes
                 enter_rx_mode();
-            } else  if (ev.scanCode == PS2_SCAN_UP) {
-                rfFreq += 1000;
-                modulator.setBaseFreq(rfFreq);
-                rttyMod.setBaseFreq(rfFreq);
-                displayDirty = true;
-            } else  if (ev.scanCode == PS2_SCAN_DOWN) {
-                rfFreq += 1000;
-                modulator.setBaseFreq(rfFreq);
-                rttyMod.setBaseFreq(rfFreq);
-                displayDirty = true;
-            } else  if (ev.scanCode == PS2_SCAN_PGUP) {
-                rfFreq += 50;
-                modulator.setBaseFreq(rfFreq);
-                rttyMod.setBaseFreq(rfFreq);
-                displayDirty = true;
-            } else  if (ev.scanCode == PS2_SCAN_PGDN) {
-                rfFreq -= 50;
-                modulator.setBaseFreq(rfFreq);
-                rttyMod.setBaseFreq(rfFreq);
-                displayDirty = true;
-            } else {
-                // TODO: MAKE THIS DEPEND ON SCREEN MODE
-                char a = ev.getAscii();
-                if (a != 0) {
-                    editorState.addChar(upcase(a));
-                    displayDirty = true;
-                } else if (ev.scanCode == PS2_SCAN_BSP) {
-                    editorState.keyBackspace();
-                    displayDirty = true;
-                } else {
-                    printf("KBD: %02x %d %d %d %d\n", (int)ev.scanCode, 
-                        (int)ev.shiftState, (int)ev.ctlState, (int)ev.altState);
+            } 
+            
+            // Everything else depends on the page
+
+            else {
+            
+                if (activePage == DisplayPage::PAGE_TX) {                
+
+                    if (ev.scanCode == PS2_SCAN_ENTER) {
+                        int l = strlen(editorSpace);
+                        if (l > 0) {
+                            // Set message
+                            display.clearDisplay();
+                            display.writeLinear(HD44780::Format::FMT_20x4, 
+                                (const uint8_t*)"Sending ...", 11, 0);
+                            // Switch modes
+                            enter_tx_mode(clk);
+                            // Radio on
+                            modulator.enable(true);
+                            // The actual data sending
+                            Frame30 frames[48];
+                            uint16_t framesSent = modulateMessage(editorSpace, 
+                                modulator, usPerSymbol, frames, 48);
+                            // Radio off
+                            modulator.enable(false);
+                            // Switch modes
+                            enter_rx_mode();
+                            // Display
+                            editorState.clear();
+                            displayDirty = true;
+                        }
+                    } 
+                    else {
+                        char a = ev.getAscii();
+                        if (a != 0) {
+                            editorState.addChar(upcase(a));
+                            displayDirty = true;
+                        } else if (ev.scanCode == PS2_SCAN_BSP) {
+                            editorState.keyBackspace();
+                            displayDirty = true;
+                        } else {
+                            printf("KBD: %02x %d %d %d %d\n", (int)ev.scanCode, 
+                                (int)ev.shiftState, (int)ev.ctlState, (int)ev.altState);
+                        }
+                    }
+
+                }
+                else if (activePage == DisplayPage::PAGE_STATUS) {
+                    if (ev.scanCode == PS2_SCAN_UP) {
+                        rfFreq += 1000;
+                        modulator.setBaseFreq(rfFreq);
+                        rttyMod.setBaseFreq(rfFreq);
+                        displayDirty = true;
+                    } else  if (ev.scanCode == PS2_SCAN_DOWN) {
+                        rfFreq += 1000;
+                        modulator.setBaseFreq(rfFreq);
+                        rttyMod.setBaseFreq(rfFreq);
+                        displayDirty = true;
+                    } else  if (ev.scanCode == PS2_SCAN_PGUP) {
+                        rfFreq += 50;
+                        modulator.setBaseFreq(rfFreq);
+                        rttyMod.setBaseFreq(rfFreq);
+                        displayDirty = true;
+                    } else  if (ev.scanCode == PS2_SCAN_PGDN) {
+                        rfFreq -= 50;
+                        modulator.setBaseFreq(rfFreq);
+                        rttyMod.setBaseFreq(rfFreq);
+                        displayDirty = true;
+                    }
+                    else if (ev.getAscii() == 'q') {
+                        if (markFreq > 0) {
+                            markFreq--;
+                        }
+                        modulator.setFrequencyLock(markFreq);
+                        rttyMod.setFrequencyLock(markFreq);
+                    }
+                    else if (ev.getAscii() == 'w') {
+                        if (markFreq < 1000) {
+                            markFreq++;
+                        }
+                        modulator.setFrequencyLock(markFreq);
+                        rttyMod.setFrequencyLock(markFreq);
+                    }
                 }
             }
         }
@@ -559,7 +589,7 @@ int main(int argc, const char** argv) {
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"KC1FSZ SCAMP Station", 20, 0);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
-                    (uint8_t*)"V0.06", 5, 20);
+                    (uint8_t*)"V0.07", 5, 20);
                 display.writeLinear(HD44780::Format::FMT_20x4, 
                     (uint8_t*)"Copyright (c) 2023", 18, 40);
             } else if (activePage == DisplayPage::PAGE_STATUS) {

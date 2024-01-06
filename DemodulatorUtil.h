@@ -21,9 +21,10 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 struct DemodulatorCommand {
 
-    enum Command { RESET };
+    enum Command { RESET, SET_MARK };
 
     Command cmd;
+    uint16_t markFreq;
 };
 
 struct DemodulatorStatus {
