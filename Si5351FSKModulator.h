@@ -34,7 +34,8 @@ class Si5351FSKModulator : public radlib::FSKModulator {
 public:
 
     Si5351FSKModulator(radlib::ClockInterface& clock, 
-        int32_t markOffset, int32_t spaceOffset);
+        int32_t markOffset, int32_t spaceOffset,
+        int32_t correction);
     virtual ~Si5351FSKModulator() { }
 
     void setBaseFreq(int32_t freqHz);
@@ -63,7 +64,7 @@ private:
     int32_t _baseFreq = 0;
     int32_t _markOffset;
     int32_t _spaceOffset;
-    int32_t _correction = 600;
+    int32_t _correction;
 };
 
 #endif

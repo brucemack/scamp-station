@@ -71,13 +71,19 @@ static const unsigned int bwFreq = 67;
 
 // This is the "tuned" frequency.  For SCAMP FSK this is the 
 // center frequency.
-static uint32_t rfFreq = 7078000;
+//static uint32_t rfFreq = 7078000;
+static uint32_t rfFreq = 7108000;
 
 enum StationMode { IDLE_MODE, RX_MODE, TX_MODE };
 
 static StationMode stationMode = StationMode::IDLE_MODE;
 
 enum DisplayPage { PAGE_LOGO, PAGE_STATUS, PAGE_RX, PAGE_TX };
+
+// This should be added to the desired frequency
+static int32_t correctionHz = 500;
+// This is amount the RX LO is shifted *DOWN*
+static int32_t rxShift = 700;
 
 // ----- KEYBOARD RELATED -------------------------------------------------
 
@@ -176,6 +182,8 @@ static void fmtFreq(Si5351FSKModulator& mod, char* buffer) {
 */
 static void enter_tx_mode(ClockInterface& clock) {
     if (stationMode != StationMode::TX_MODE) {    
+        // Turn off RX LO
+        si_enable(1, false);
         // Turn off the ADC since the data is about to become
         // unusable
         adc_run(false);
@@ -200,6 +208,8 @@ static void enter_rx_mode() {
         gpio_put(TR_PHASE_0_PIN, 1);
         // Turn off the ADC back on
         adc_run(true);
+        // Turn on RX LO
+        si_enable(1, true);
 
         stationMode = StationMode::RX_MODE;
     }
@@ -334,15 +344,20 @@ int main(int argc, const char** argv) {
     cout << "Initialized Si5351" << endl;
 
     si_enable(0, false);
+    si_enable(1, false);
 
     int32_t m = (bwFreq / 2);
     int32_t s = m - bwFreq;
 
-    Si5351FSKModulator modulator(clk, m, s);
+    Si5351FSKModulator modulator(clk, m, s, correctionHz);
     modulator.setBaseFreq(rfFreq);
 
-    Si5351FSKModulator rttyMod(clk, m, m - 170);
+    Si5351FSKModulator rttyMod(clk, m, m - 170, correctionHz);
     rttyMod.setBaseFreq(rfFreq);
+
+    // Receiver frequency setup
+    si_enable(1, true);
+    si_evaluate(1, rfFreq + correctionHz - rxShift);
 
     // ----- RX BUFFER SETUP --------------------------------------------------
 
@@ -356,6 +371,9 @@ int main(int argc, const char** argv) {
     // Here we can inject a tuning error to show that the demodulator will
     // still find the signal.
     const unsigned int tuningErrorHz = 0;    
+
+    // Start in RX mode
+    enter_rx_mode();
 
     // Main event loop. Prevent exit
 
@@ -551,21 +569,29 @@ int main(int argc, const char** argv) {
                         rfFreq += 1000;
                         modulator.setBaseFreq(rfFreq);
                         rttyMod.setBaseFreq(rfFreq);
+                        // Receiver frequency setup
+                        si_evaluate(1, rfFreq + correctionHz - rxShift);
                         displayDirty = true;
                     } else  if (ev.scanCode == PS2_SCAN_DOWN) {
-                        rfFreq += 1000;
+                        rfFreq -= 1000;
                         modulator.setBaseFreq(rfFreq);
                         rttyMod.setBaseFreq(rfFreq);
+                        // Receiver frequency setup
+                        si_evaluate(1, rfFreq + correctionHz - rxShift);
                         displayDirty = true;
                     } else  if (ev.scanCode == PS2_SCAN_PGUP) {
                         rfFreq += 50;
                         modulator.setBaseFreq(rfFreq);
                         rttyMod.setBaseFreq(rfFreq);
+                        // Receiver frequency setup
+                        si_evaluate(1, rfFreq + correctionHz - rxShift);
                         displayDirty = true;
                     } else  if (ev.scanCode == PS2_SCAN_PGDN) {
                         rfFreq -= 50;
                         modulator.setBaseFreq(rfFreq);
                         rttyMod.setBaseFreq(rfFreq);
+                        // Receiver frequency setup
+                        si_evaluate(1, rfFreq + correctionHz - rxShift);
                         displayDirty = true;
                     } else if (ev.getAscii() == 'q') {
                         if (markFreq > 0) {
