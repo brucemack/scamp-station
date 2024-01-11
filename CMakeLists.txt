@@ -17,6 +17,7 @@ add_executable(main
   radlib/util/dsp_util.cpp
   radlib/util/fixed_math.cpp
   radlib/util/fixed_fft.cpp
+  radlib/util/Demodulator.cpp 
   radlib/lcd/HD44780.cpp 
   radlib/lcd/HD44780_PCF8574.cpp 
   radlib/hw/pico/PICOI2CInterface.cpp 
@@ -34,7 +35,6 @@ add_executable(main
   radlib/scamp/Util.cpp 
 	radlib/scamp/ClockRecoveryPLL.cpp 
 	radlib/scamp/ClockRecoveryDLL.cpp 
-  radlib/scamp/Demodulator.cpp 
   radlib/scamp/SCAMPDemodulator.cpp 
   hello-ps2keyboard/PS2Keyboard.cpp
   hello-pico-si5351/si5351.c 

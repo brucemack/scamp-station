@@ -25,7 +25,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "pico/util/queue.h"
 #endif
 
-#include "radlib/scamp/DemodulatorListener.h"
+#include "radlib/util/DemodulatorListener.h"
 
 class StationDemodulatorListener : public radlib::DemodulatorListener {
 public:
@@ -33,15 +33,14 @@ public:
     StationDemodulatorListener(queue_t* rxQueue);
 
     virtual void frequencyLocked(uint16_t markFreq, uint16_t spaceFreq);
+    virtual void sampleMetrics(q15 sample, uint8_t activeSymbol, 
+        float* symbolCorr, bool valid);
+
+    virtual void received(char asciiChar);
+
     virtual void dataSyncAcquired();
     virtual void badFrameReceived(uint32_t rawFrame);
-    virtual void received(char asciiChar);
     virtual void receivedBit(bool bit, uint16_t frameBitPos, int syncFrameCorr);
-
-    virtual void sampleMetrics(uint8_t activeSymbol, bool capture, 
-        int32_t lastPLLError,
-        float* symbolCorr, float corrThreshold, float corrDiff,
-        float sample);
 
 private:
 

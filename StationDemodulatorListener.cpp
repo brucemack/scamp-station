@@ -60,9 +60,8 @@ void StationDemodulatorListener::receivedBit(bool bit, uint16_t frameBitPos, int
     //cout.flush();
 }
 
-void StationDemodulatorListener::sampleMetrics(uint8_t activeSymbol, bool capture, 
-    int32_t lastPLLError,
-    float* symbolCorr, float corrThreshold, float corrDiff, float sample) {
+void StationDemodulatorListener::sampleMetrics(q15 sample, uint8_t activeSymbol, 
+    float* symbolCorr, bool valid) {
     /*
     _sampleCount++;
 

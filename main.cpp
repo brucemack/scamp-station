@@ -566,14 +566,14 @@ int main(int argc, const char** argv) {
                 }
                 else if (activePage == DisplayPage::PAGE_STATUS) {
                     if (ev.scanCode == PS2_SCAN_UP) {
-                        rfFreq += 1000;
+                        rfFreq += 500;
                         modulator.setBaseFreq(rfFreq);
                         rttyMod.setBaseFreq(rfFreq);
                         // Receiver frequency setup
                         si_evaluate(1, rfFreq + correctionHz - rxShift);
                         displayDirty = true;
                     } else  if (ev.scanCode == PS2_SCAN_DOWN) {
-                        rfFreq -= 1000;
+                        rfFreq -= 500;
                         modulator.setBaseFreq(rfFreq);
                         rttyMod.setBaseFreq(rfFreq);
                         // Receiver frequency setup
